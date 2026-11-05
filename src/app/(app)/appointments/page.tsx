@@ -23,39 +23,68 @@ export default async function Appointments({ searchParams }: { searchParams: Pro
   const { d } = await searchParams
   const date = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayLocal()
   const today = todayLocal()
-  const week = Array.from({ length: 7 }, (_, i) => shift(date, i - 3))
+  // month grid (Monday-first), padded to whole weeks
+  const first = `${date.slice(0, 7)}-01`
+  const lead = (new Date(`${first}T00:00:00Z`).getUTCDay() + 6) % 7
+  const gridStart = shift(first, -lead)
+  const nextMonth = (() => { const x = new Date(`${first}T00:00:00Z`); x.setUTCMonth(x.getUTCMonth() + 1); return x.toISOString().slice(0, 10) })()
+  const prevMonth = (() => { const x = new Date(`${first}T00:00:00Z`); x.setUTCMonth(x.getUTCMonth() - 1); return x.toISOString().slice(0, 10) })()
+  const daysInGrid = Math.ceil((lead + (Date.parse(nextMonth) - Date.parse(first)) / 864e5) / 7) * 7
+  const grid = Array.from({ length: daysInGrid }, (_, i) => shift(gridStart, i))
   const [list, counts, upcoming] = await Promise.all([
     sql<Appointment[]>`select a.*, p.name as patient_name, p.ic as patient_ic, p.phone as patient_phone from appointments a join patients p on p.id = a.patient_id
       where (a.scheduled_at at time zone ${TZ})::date = ${date}::date order by a.scheduled_at`,
-    sql<{ day: string; n: number }[]>`select to_char((scheduled_at at time zone ${TZ})::date, 'YYYY-MM-DD') as day, count(*)::int as n from appointments
-      where status <> 'cancelled' and (scheduled_at at time zone ${TZ})::date between ${week[0]}::date and ${week[6]}::date group by 1`,
+    sql<{ day: string; n: number; names: string[] }[]>`
+      select to_char((a.scheduled_at at time zone ${TZ})::date, 'YYYY-MM-DD') as day, count(*)::int as n,
+        (array_agg(split_part(p.name, ' ', 1) order by a.scheduled_at))[1:3] as names
+      from appointments a join patients p on p.id = a.patient_id
+      where a.status <> 'cancelled' and (a.scheduled_at at time zone ${TZ})::date between ${grid[0]}::date and ${grid[grid.length - 1]}::date group by 1`,
     sql<Appointment[]>`select a.*, p.name as patient_name, p.ic as patient_ic, p.phone as patient_phone from appointments a join patients p on p.id = a.patient_id
       where a.status = 'scheduled' and (a.scheduled_at at time zone ${TZ})::date between ${today}::date and ${today}::date + 30
       order by a.scheduled_at limit 100`,
   ])
-  const cmap = Object.fromEntries(counts.map((c) => [c.day, c.n]))
+  const cmap = Object.fromEntries(counts.map((c) => [c.day, c]))
+  const monthLabel = new Date(`${first}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const monthTotal = counts.filter((c) => c.day.startsWith(date.slice(0, 7))).reduce((t, c) => t + c.n, 0)
   const label = new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
   return (
     <>
       <PageHeader title="Appointments" subtitle={label} actions={date !== today && <Link href="/appointments" className="btn-secondary btn-sm">Today</Link>} />
-      <div className="card mb-4 flex items-center gap-1 p-2">
-        <Link href={`/appointments?d=${shift(date, -7)}`} className="btn-ghost p-2" aria-label="Previous week"><ChevronLeft size={18} /></Link>
-        <div className="grid flex-1 grid-cols-7 gap-1">
-          {week.map((w) => {
-            const dt = new Date(`${w}T00:00:00Z`)
-            const active = w === date
+      <div className="card mb-4 p-2 sm:p-3">
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+          <Link href={`/appointments?d=${prevMonth}`} className="btn-ghost p-2" aria-label="Previous month"><ChevronLeft size={18} /></Link>
+          <div className="text-center">
+            <div className="text-base font-bold text-slate-900">{monthLabel}</div>
+            <div className="text-xs text-slate-500">{monthTotal} appointment{monthTotal === 1 ? '' : 's'}</div>
+          </div>
+          <Link href={`/appointments?d=${nextMonth}`} className="btn-ghost p-2" aria-label="Next month"><ChevronRight size={18} /></Link>
+        </div>
+        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl bg-slate-200 ring-1 ring-slate-200">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((w) => <div key={w} className="bg-slate-50 py-1.5 text-center text-[11px] font-semibold uppercase text-slate-500">{w}</div>)}
+          {grid.map((g) => {
+            const c = cmap[g]
+            const inMonth = g.slice(0, 7) === date.slice(0, 7)
+            const active = g === date
             return (
-              <Link key={w} href={`/appointments?d=${w}`} className={`flex flex-col items-center rounded-xl py-1.5 text-xs ${active ? 'bg-brand-600 text-white' : w === today ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}>
-                <span className="font-medium opacity-80">{dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</span>
-                <span className="text-base font-bold">{dt.getUTCDate()}</span>
-                <span className={`h-1.5 w-1.5 rounded-full ${cmap[w] ? (active ? 'bg-white' : 'bg-brand-500') : 'bg-transparent'}`} />
+              <Link key={g} href={`/appointments?d=${g}`} aria-label={`${g}: ${c?.n ?? 0} appointment(s)`}
+                className={`flex min-h-14 flex-col gap-0.5 p-1 text-left sm:min-h-24 sm:p-1.5 ${active ? 'bg-brand-50 ring-2 ring-inset ring-brand-600' : 'bg-white hover:bg-slate-50'} ${inMonth ? '' : 'opacity-40'}`}>
+                <span className={`grid h-6 w-6 place-items-center rounded-full text-xs font-semibold ${g === today ? 'bg-brand-600 text-white' : 'text-slate-700'}`}>{Number(g.slice(8))}</span>
+                {c && (
+                  <>
+                    <span className="rounded bg-brand-600 px-1 text-center text-[10px] font-bold leading-4 text-white sm:hidden">{c.n}</span>
+                    <span className="hidden flex-col gap-0.5 sm:flex">
+                      {c.names.map((n, i) => <span key={i} className="truncate rounded bg-brand-50 px-1 text-[11px] leading-4 text-brand-800">{n}</span>)}
+                      {c.n > c.names.length && <span className="text-[11px] font-semibold text-slate-500">+{c.n - c.names.length} more</span>}
+                    </span>
+                  </>
+                )}
               </Link>
             )
           })}
         </div>
-        <Link href={`/appointments?d=${shift(date, 7)}`} className="btn-ghost p-2" aria-label="Next week"><ChevronRight size={18} /></Link>
       </div>
+      <h2 className="h-section mb-2">{label}</h2>
 
       <div className="mb-4">
         <MiniForm action={addAppointment.bind(null, null)} label="Book appointment" submit="Book">
