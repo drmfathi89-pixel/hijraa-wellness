@@ -6,8 +6,10 @@ import { calcAge, fmtDate } from '@/lib/utils'
 import { Avatar } from '@/components/PatientRow'
 import PatientTabs from '@/components/PatientTabs'
 import { startEncounter } from '@/app/actions/encounters'
+import { requireUser } from '@/lib/auth'
 
 export default async function PatientLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
+  await requireUser()
   const { id } = await params
   const p = await getPatient(id)
   if (!p) notFound()

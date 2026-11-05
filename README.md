@@ -11,13 +11,18 @@ Mobile-first clinic management system (installable PWA) built with Next.js 16 + 
 
 Plus: login with roles (admin/doctor/staff), user management, dashboard, PWA install.
 
-## Deploy (Neon + Vercel)
-Neon is configured in `neon.ts` (Postgres only) and linked to project `patient-shape-07791828`, branch `production` (`.neon/`).
-1. `neon login`, then `neon deploy`: this provisions the services and writes `NEON_BRANCH`, `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct) into `.env.local`.
-2. In Vercel, import the GitHub repo and set `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and `AUTH_SECRET` (`openssl rand -base64 32`).
-3. Deploy. `scripts/migrate.mjs` applies the schema over the **direct** connection before `next build`. The app's queries use the **pooled** URL, validated through `parseEnv(neon.ts)`.
+## Deploy (GitHub → Vercel + Neon)
+Neon is configured in `neon.ts` (Postgres only) and linked to project `patient-shape-07791828`, branch `production`.
+1. Push this repo to GitHub.
+2. In Vercel, go to **Add New → Project**, import the repo, and add these environment variables:
+   - `DATABASE_URL`: Neon's **pooled** connection string (Neon console → project → **Connect**, connection pooling on).
+   - `DATABASE_URL_UNPOOLED` (recommended): the same string with pooling off, used for migrations.
+   - `AUTH_SECRET` (optional): if omitted, the session key is derived from `DATABASE_URL`.
+3. Deploy. `scripts/migrate.mjs` applies the schema before `next build`.
 4. Open the site and go to **/setup** to create the first admin account.
 5. On your phone: *Add to Home Screen* (iPhone Safari) or *Install app* (Android Chrome).
+
+With the Neon CLI, `neon deploy` / `neon env pull` writes the same variables into `.env.local`.
 
 ## Local development
 ```bash

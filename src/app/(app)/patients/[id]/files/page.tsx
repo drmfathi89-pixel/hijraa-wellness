@@ -4,10 +4,12 @@ import { sql } from '@/lib/db'
 import { fmtDateTime, fmtSize } from '@/lib/utils'
 import FileUpload from '@/components/FileUpload'
 import { Empty } from '@/components/ui'
+import { requireUser } from '@/lib/auth'
 
 type Doc = { id: string; title: string; category: string; mime: string; size: number; created_at: Date; uploader: string | null }
 
 export default async function Files({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ c?: string }> }) {
+  await requireUser()
   const { id } = await params
   const { c } = await searchParams
   const docs = await sql<Doc[]>`select d.id, d.title, d.category, d.mime, d.size, d.created_at, u.name as uploader

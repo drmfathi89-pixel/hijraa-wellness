@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Pencil, Trash2 } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getPatient, type Treatment, type Appointment } from '@/lib/queries'
-import { getUser } from '@/lib/auth'
+import { requireUser } from '@/lib/auth'
 import { calcAge, fmtDate, fmtDateTime } from '@/lib/utils'
 import type { Encounter } from '@/lib/types'
 import { Info, StatusBadge } from '@/components/ui'
@@ -12,7 +12,8 @@ import { deletePatient } from '@/app/actions/patients'
 
 export default async function Overview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [p, me] = await Promise.all([getPatient(id), getUser()])
+  const me = await requireUser()
+  const p = await getPatient(id)
   if (!p) return null
   const [[lastVitals], recent, active, upcoming, [counts]] = await Promise.all([
     sql<Encounter[]>`select * from encounters where patient_id=${id} and (bp_systolic is not null or pulse is not null or temperature is not null or weight is not null or spo2 is not null) order by encounter_at desc limit 1`,
@@ -96,7 +97,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
           <Link href={`/patients/${id}/history`}><div className="text-2xl font-extrabold text-brand-700">{counts.past}</div><div className="text-xs text-slate-500">Past records</div></Link>
           <Link href={`/patients/${id}/files`}><div className="text-2xl font-extrabold text-brand-700">{counts.docs}</div><div className="text-xs text-slate-500">Files</div></Link>
         </section>
-        {me?.role === 'admin' && (
+        {me.role === 'admin' && (
           <ConfirmButton action={deletePatient.bind(null, id)} message={`Delete ${p.name} and ALL their records permanently?`} className="btn-danger w-full"><Trash2 size={16} /> Delete patient</ConfirmButton>
         )}
       </div>

@@ -6,8 +6,10 @@ import { fmtDateTime, fmtSize } from '@/lib/utils'
 import FileViewer from '@/components/FileViewer'
 import ConfirmButton from '@/components/ConfirmButton'
 import { deleteDocument } from '@/app/actions/files'
+import { requireUser } from '@/lib/auth'
 
 export default async function ViewFile({ params }: { params: Promise<{ id: string; fid: string }> }) {
+  await requireUser()
   const { id, fid } = await params
   if (!/^[0-9a-f-]{36}$/i.test(fid)) notFound()
   const [d] = await sql`select d.id, d.title, d.category, d.mime, d.size, d.created_at, u.name as uploader from documents d

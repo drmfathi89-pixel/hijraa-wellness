@@ -5,10 +5,12 @@ import { searchPatients } from '@/lib/queries'
 import { PageHeader, Empty } from '@/components/ui'
 import SearchBox from '@/components/SearchBox'
 import PatientRow from '@/components/PatientRow'
+import { requireUser } from '@/lib/auth'
 
 export const metadata = { title: 'Patients' }
 
 export default async function Patients({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await requireUser()
   const { q = '' } = await searchParams
   const patients = await searchPatients(q, 100)
   return (

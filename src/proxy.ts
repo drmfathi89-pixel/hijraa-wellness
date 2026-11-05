@@ -1,16 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
+import { sessionKey } from '@/lib/session-key'
 
 const PUBLIC = ['/login', '/setup', '/manifest.webmanifest', '/sw.js', '/offline']
 
+// Fast first gate (signature + expiry). Every page, route handler and server action
+// also calls getUser()/requireUser(), which checks the account is still active.
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + '/'))) return NextResponse.next()
   const token = req.cookies.get('hw_session')?.value
   let ok = false
-  if (token && process.env.AUTH_SECRET) {
+  if (token) {
     try {
-      await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET))
+      await jwtVerify(token, await sessionKey())
       ok = true
     } catch {}
   }

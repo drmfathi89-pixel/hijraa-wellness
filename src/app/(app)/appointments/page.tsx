@@ -8,6 +8,7 @@ import { PageHeader, Empty, Field } from '@/components/ui'
 import MiniForm from '@/components/MiniForm'
 import StatusSelect from '@/components/StatusSelect'
 import PatientPicker from '@/components/PatientPicker'
+import { requireUser } from '@/lib/auth'
 
 export const metadata = { title: 'Appointments' }
 
@@ -18,6 +19,7 @@ function shift(date: string, days: number) {
 }
 
 export default async function Appointments({ searchParams }: { searchParams: Promise<{ d?: string }> }) {
+  await requireUser()
   const { d } = await searchParams
   const date = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayLocal()
   const today = todayLocal()

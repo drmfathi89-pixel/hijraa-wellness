@@ -3,8 +3,10 @@ import { ChevronRight } from 'lucide-react'
 import { listEncounters } from '@/lib/queries'
 import { fmtDateTime } from '@/lib/utils'
 import { Empty, StatusBadge } from '@/components/ui'
+import { requireUser } from '@/lib/auth'
 
 export default async function Encounters({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser()
   const { id } = await params
   const list = await listEncounters(id)
   if (list.length === 0) return <Empty title="No encounters yet">Tap “Start encounter” above when seeing the patient.</Empty>

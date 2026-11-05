@@ -10,10 +10,12 @@ import ConfirmButton from '@/components/ConfirmButton'
 import PrintButton from '@/components/PrintButton'
 import { StatusBadge } from '@/components/ui'
 import type { EncounterPayload } from '@/lib/types'
+import { requireUser } from '@/lib/auth'
 
 const s = (v: unknown) => (v == null ? '' : String(v))
 
 export default async function EncounterPage({ params }: { params: Promise<{ id: string; eid: string }> }) {
+  await requireUser()
   const { id, eid } = await params
   const e = await getEncounter(eid)
   if (!e || e.patient_id !== id) notFound()

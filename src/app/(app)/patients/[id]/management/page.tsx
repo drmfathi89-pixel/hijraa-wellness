@@ -8,8 +8,10 @@ import MiniForm from '@/components/MiniForm'
 import StatusSelect from '@/components/StatusSelect'
 import ConfirmButton from '@/components/ConfirmButton'
 import { Field } from '@/components/ui'
+import { requireUser } from '@/lib/auth'
 
 export default async function Management({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser()
   const { id } = await params
   const [plans, treatments, appts] = await Promise.all([
     sql<{ id: string; encounter_at: Date; plan: string; diagnoses: { description: string }[] }[]>`select id, encounter_at, plan, diagnoses from encounters where patient_id=${id} and plan is not null order by encounter_at desc limit 20`,

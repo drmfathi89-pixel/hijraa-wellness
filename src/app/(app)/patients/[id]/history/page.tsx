@@ -8,11 +8,13 @@ import PastRecordForm from '@/components/PastRecordForm'
 import ExcelImport from '@/components/ExcelImport'
 import ConfirmButton from '@/components/ConfirmButton'
 import { Empty } from '@/components/ui'
+import { requireUser } from '@/lib/auth'
 
 type PR = { id: string; visit_date: string | null; facility: string | null; doctor: string | null; complaint: string | null; diagnosis: string | null; treatment: string | null; notes: string | null; source: string }
 type Item = { kind: 'past'; date: string; r: PR } | { kind: 'enc'; date: string; e: Encounter }
 
 export default async function History({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser()
   const { id } = await params
   const [past, encs] = await Promise.all([
     sql<PR[]>`select * from past_records where patient_id=${id}`,
