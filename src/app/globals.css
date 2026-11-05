@@ -1,26 +1,40 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-brand-50: #eefbf7;
+  --color-brand-100: #d5f4ea;
+  --color-brand-200: #aee8d7;
+  --color-brand-500: #14a383;
+  --color-brand-600: #0b8a6e;
+  --color-brand-700: #0a6e59;
+  --color-brand-800: #0b5748;
+  --color-brand-900: #0a483c;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html { -webkit-tap-highlight-color: transparent; }
+body { background: #f4f7f6; color: #10201c; }
+
+@layer components {
+  .card { @apply min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-sm; }
+  .card-pad { @apply p-4 sm:p-5; }
+  .label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 sm:text-sm; }
+  textarea.input { @apply min-h-[88px] leading-relaxed; }
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold; }
+  .h-section { @apply text-base font-bold text-slate-800; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@media print {
+  aside, nav, header, .print\:hidden { display: none !important; }
+  body { background: #fff; }
+  .lg\:pl-64 { padding-left: 0 !important; }
+  .card { box-shadow: none; border-color: #ddd; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50; }
+@utility btn-primary { @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700; }
+@utility btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+@utility btn-danger { @apply btn border border-red-200 bg-white text-red-600 hover:bg-red-50; }
+@utility btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
+@utility btn-sm { @apply px-3 py-1.5 text-xs; }
