@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git -c user.name=* commit *)",
+      "Bash(git push -u origin main)",
+      "Bash(git push origin main)",
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git rev-parse *)",
+      "Bash(npm run build)",
+      "Bash(curl -s https://api.github.com/repos/drmfathi89-pixel/hijraa-wellness/*)",
+      "Bash(curl -sS https://api.github.com/repos/drmfathi89-pixel/hijraa-wellness/*)",
+      "Bash(curl -sS \"https://api.github.com/repos/drmfathi89-pixel/hijraa-wellness/*)"
+    ]
+  }
+}
