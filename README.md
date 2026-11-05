@@ -36,3 +36,4 @@ npm run dev
 - Files are stored in Postgres (max 4 MB each, a Vercel request limit). Large phone photos are compressed automatically.
 - Patient data is never cached by the service worker. Only static assets are cached.
 - Times are shown in Malaysia time (Asia/Kuala_Lumpur).
+- `vercel.json` runs the app's functions in Singapore (`sin1`), next to the Neon database (`ap-southeast-1`), so each query is a short round trip.
