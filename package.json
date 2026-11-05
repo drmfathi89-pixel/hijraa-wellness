@@ -11,6 +11,8 @@
     "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
+    "@neon/config": "^1.11.3",
+    "@neon/env": "^1.6.15",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.15",
     "lucide-react": "^1.69.0",
