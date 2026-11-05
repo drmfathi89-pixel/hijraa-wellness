@@ -1,5 +1,5 @@
 'use client'
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, startTransition, useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { FormState } from '@/app/actions/auth'
 
@@ -10,7 +10,7 @@ export default function PastRecordForm({ action }: { action: (s: FormState, fd: 
   useEffect(() => { if (state?.ok) { ref.current?.reset(); setOpen(false) } }, [state])
   if (!open) return <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={16} /> Add past record</button>
   return (
-    <form ref={ref} action={formAction} className="card card-pad grid gap-3 sm:grid-cols-3">
+    <form ref={ref} onSubmit={keepValues(formAction)} className="card card-pad grid gap-3 sm:grid-cols-3">
       <div><label className="label">Visit date</label><input type="date" name="visit_date" className="input" required /></div>
       <div><label className="label">Facility / clinic</label><input name="facility" className="input" /></div>
       <div><label className="label">Doctor</label><input name="doctor" className="input" /></div>
@@ -25,4 +25,13 @@ export default function PastRecordForm({ action }: { action: (s: FormState, fd: 
       </div>
     </form>
   )
+}
+
+// Submit without React's automatic form reset, so a validation error keeps what was typed.
+function keepValues(dispatch: (fd: FormData) => void) {
+  return (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(() => dispatch(fd))
+  }
 }

@@ -25,13 +25,13 @@ export function Empty({ title, children }: { title: string; children?: React.Rea
 
 const statusColors: Record<string, string> = {
   scheduled: 'bg-sky-100 text-sky-700',
-  completed: 'bg-emerald-100 text-emerald-700',
+  completed: 'bg-leaf/30 text-leaf-dark',
   cancelled: 'bg-slate-200 text-slate-600',
   'no-show': 'bg-amber-100 text-amber-700',
   open: 'bg-amber-100 text-amber-700',
-  closed: 'bg-emerald-100 text-emerald-700',
+  closed: 'bg-leaf/30 text-leaf-dark',
   active: 'bg-sky-100 text-sky-700',
-  stopped: 'bg-red-100 text-red-700',
+  stopped: 'bg-heart/10 text-heart-dark',
 }
 
 export function StatusBadge({ status }: { status: string }) {

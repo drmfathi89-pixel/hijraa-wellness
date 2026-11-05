@@ -77,6 +77,14 @@ export function bmi(weight?: number | null, height?: number | null): string | nu
   return (weight / (h * h)).toFixed(1)
 }
 
+export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
+
+/** Lower-cased username, or null if it isn't 3-32 letters, digits, dots, dashes or underscores. */
+export function cleanUsername(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? '').trim().toLowerCase()
+  return USERNAME_RE.test(s) ? s : null
+}
+
 export function str(v: FormDataEntryValue | null): string | null {
   if (v == null) return null
   const s = String(v).trim()

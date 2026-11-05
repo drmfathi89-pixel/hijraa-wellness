@@ -9,7 +9,7 @@ import EncounterSummary from '@/components/EncounterSummary'
 import ConfirmButton from '@/components/ConfirmButton'
 import PrintButton from '@/components/PrintButton'
 import { StatusBadge } from '@/components/ui'
-import type { EncounterPayload } from '@/lib/types'
+import { type EncounterPayload, investigationText, diagnosisText } from '@/lib/types'
 import { requireUser } from '@/lib/auth'
 
 const s = (v: unknown) => (v == null ? '' : String(v))
@@ -57,7 +57,7 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
       bp_systolic: s(e.bp_systolic), bp_diastolic: s(e.bp_diastolic), pulse: s(e.pulse), resp_rate: s(e.resp_rate),
       temperature: s(e.temperature), spo2: s(e.spo2), weight: s(e.weight), height: s(e.height), glucose: s(e.glucose), pain_score: s(e.pain_score),
     },
-    investigations: e.investigations, diagnoses: e.diagnoses, plan: s(e.plan),
+    investigation_notes: investigationText(e), diagnosis_notes: diagnosisText(e), plan: s(e.plan),
     treatments: treatments.map((t) => ({ id: t.id, kind: t.kind, name: t.name, dose: s(t.dose), frequency: s(t.frequency), duration: s(t.duration), instructions: s(t.instructions) })),
     followup: followup ? { at: toLocalInput(followup.scheduled_at), reason: s(followup.reason) } : { at: '', reason: '' },
   }

@@ -10,8 +10,8 @@ export type EncounterPayload = {
   examination: string
   notes: string
   vitals: Record<'bp_systolic' | 'bp_diastolic' | 'pulse' | 'resp_rate' | 'temperature' | 'spo2' | 'weight' | 'height' | 'glucose' | 'pain_score', string>
-  investigations: Investigation[]
-  diagnoses: Diagnosis[]
+  investigation_notes: string
+  diagnosis_notes: string
   plan: string
   treatments: TreatmentRow[]
   followup: { at: string; reason: string }
@@ -24,5 +24,23 @@ export type Encounter = {
   temperature: number | null; spo2: number | null; weight: number | null; height: number | null
   glucose: number | null; pain_score: number | null
   investigations: Investigation[]; diagnoses: Diagnosis[]; plan: string | null
+  investigation_notes: string | null; diagnosis_notes: string | null
   doctor_id: string | null; doctor_name?: string | null; updated_at: Date
+}
+
+/** Investigation notes as text. Older encounters stored a structured list; show that as lines. */
+export function investigationText(e: Pick<Encounter, 'investigation_notes' | 'investigations'>): string {
+  if (e.investigation_notes) return e.investigation_notes
+  return (e.investigations ?? []).map((i) => [i.name, [i.result, i.unit].filter(Boolean).join(' '), i.notes].filter(Boolean).join(': ')).join('\n')
+}
+
+/** Diagnosis as text (free text, or the older structured list joined into lines). */
+export function diagnosisText(e: Pick<Encounter, 'diagnosis_notes' | 'diagnoses'>): string {
+  if (e.diagnosis_notes) return e.diagnosis_notes
+  return (e.diagnoses ?? []).map((d) => d.description + (d.code ? ` (${d.code})` : '')).join('\n')
+}
+
+/** First line of the diagnosis, for one-line lists. */
+export function diagnosisLine(e: Pick<Encounter, 'diagnosis_notes' | 'diagnoses'>): string {
+  return diagnosisText(e).split('\n').map((l) => l.trim()).filter(Boolean).join(', ')
 }

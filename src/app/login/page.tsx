@@ -14,7 +14,7 @@ export default async function LoginPage() {
   return (
     <AuthShell title="Sign in" subtitle="Use your clinic account">
       <AuthForm action={login} submit="Sign in" fields={[
-        { name: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
+        { name: 'username', label: 'Username', autoComplete: 'username' },
         { name: 'password', label: 'Password', type: 'password', autoComplete: 'current-password' },
       ]} />
       <p className="mt-4 text-center text-xs text-slate-400">Forgot password? Ask your clinic admin.</p>

@@ -1,5 +1,5 @@
 'use client'
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, startTransition, useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { FormState } from '@/app/actions/auth'
 
@@ -11,7 +11,7 @@ export default function MiniForm({ action, label, children, submit = 'Save', def
   useEffect(() => { if (state?.ok) { ref.current?.reset(); if (!defaultOpen) setOpen(false) } }, [state, defaultOpen])
   if (!open) return <button type="button" className="btn-secondary btn-sm" onClick={() => setOpen(true)}><Plus size={14} /> {label}</button>
   return (
-    <form ref={ref} action={formAction} className="mt-3 grid w-full gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2">
+    <form ref={ref} onSubmit={keepValues(formAction)} className="mt-3 grid w-full gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2">
       {children}
       {state?.error && <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p>}
       {state?.ok && defaultOpen && <p className="text-sm text-emerald-600 sm:col-span-2">{state.ok}</p>}
@@ -21,4 +21,13 @@ export default function MiniForm({ action, label, children, submit = 'Save', def
       </div>
     </form>
   )
+}
+
+// Submit without React's automatic form reset, so a validation error keeps what was typed.
+function keepValues(dispatch: (fd: FormData) => void) {
+  return (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(() => dispatch(fd))
+  }
 }

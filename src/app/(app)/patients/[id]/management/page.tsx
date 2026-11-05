@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Trash2 } from 'lucide-react'
 import { sql } from '@/lib/db'
 import type { Treatment, Appointment } from '@/lib/queries'
+import { diagnosisLine } from '@/lib/types'
 import { fmtDate, fmtDateTime, toLocalInput } from '@/lib/utils'
 import { addAppointment, addTreatment, setAppointmentStatus, setTreatmentStatus, deleteAppointment, deleteTreatment } from '@/app/actions/management'
 import MiniForm from '@/components/MiniForm'
@@ -14,7 +15,7 @@ export default async function Management({ params }: { params: Promise<{ id: str
   await requireUser()
   const { id } = await params
   const [plans, treatments, appts] = await Promise.all([
-    sql<{ id: string; encounter_at: Date; plan: string; diagnoses: { description: string }[] }[]>`select id, encounter_at, plan, diagnoses from encounters where patient_id=${id} and plan is not null order by encounter_at desc limit 20`,
+    sql<{ id: string; encounter_at: Date; plan: string; diagnoses: { description: string; code: string; type: 'Primary' }[]; diagnosis_notes: string | null }[]>`select id, encounter_at, plan, diagnoses, diagnosis_notes from encounters where patient_id=${id} and plan is not null order by encounter_at desc limit 20`,
     sql<Treatment[]>`select * from treatments where patient_id=${id} order by (status='active') desc, created_at desc`,
     sql<Appointment[]>`select * from appointments where patient_id=${id} order by scheduled_at desc`,
   ])
@@ -30,7 +31,7 @@ export default async function Management({ params }: { params: Promise<{ id: str
           <ul className="space-y-3">
             {plans.map((p, i) => (
               <li key={p.id} className={`rounded-xl p-3 ${i === 0 ? 'bg-brand-50 ring-1 ring-brand-200' : 'bg-slate-50'}`}>
-                <Link href={`/patients/${id}/encounters/${p.id}`} className="text-xs font-semibold text-brand-700">{fmtDateTime(p.encounter_at)}{i === 0 ? ' · Current plan' : ''}{p.diagnoses.length ? ` · ${p.diagnoses.map((d) => d.description).join(', ')}` : ''}</Link>
+                <Link href={`/patients/${id}/encounters/${p.id}`} className="text-xs font-semibold text-brand-700">{fmtDateTime(p.encounter_at)}{i === 0 ? ' · Current plan' : ''}{diagnosisLine(p) ? ` · ${diagnosisLine(p)}` : ''}</Link>
                 <p className="mt-1 whitespace-pre-line text-[15px]">{p.plan}</p>
               </li>
             ))}

@@ -24,8 +24,6 @@ export async function saveEncounter(id: string, data: EncounterPayload, close: b
   if (!enc) return { error: 'Encounter not found' }
   const pid = enc.patient_id as string
   const v = Object.fromEntries(VITALS.map((k) => [k, num(data.vitals?.[k])]))
-  const investigations = (data.investigations ?? []).filter((i) => t(i.name))
-  const diagnoses = (data.diagnoses ?? []).filter((d) => t(d.description))
   const at = data.encounter_at ? `${data.encounter_at}:00${TZ_OFFSET}` : new Date().toISOString()
 
   await sql.begin(async (tx) => {
@@ -34,7 +32,8 @@ export async function saveEncounter(id: string, data: EncounterPayload, close: b
       chief_complaint=${t(data.chief_complaint)}, history=${t(data.history)}, examination=${t(data.examination)}, notes=${t(data.notes)},
       bp_systolic=${v.bp_systolic}, bp_diastolic=${v.bp_diastolic}, pulse=${v.pulse}, resp_rate=${v.resp_rate},
       temperature=${v.temperature}, spo2=${v.spo2}, weight=${v.weight}, height=${v.height}, glucose=${v.glucose}, pain_score=${v.pain_score},
-      investigations=${tx.json(investigations)}, diagnoses=${tx.json(diagnoses)},
+      investigation_notes=${t(data.investigation_notes)}, diagnosis_notes=${t(data.diagnosis_notes)},
+      investigations='[]'::jsonb, diagnoses='[]'::jsonb,
       plan=${t(data.plan)}, status=${close ? 'closed' : 'open'}, updated_at=now()
       where id=${id}`
 

@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react'
 import { listEncounters } from '@/lib/queries'
 import { fmtDateTime } from '@/lib/utils'
 import { Empty, StatusBadge } from '@/components/ui'
+import { diagnosisLine } from '@/lib/types'
 import { requireUser } from '@/lib/auth'
 
 export default async function Encounters({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +22,7 @@ export default async function Encounters({ params }: { params: Promise<{ id: str
               <span className="text-xs text-slate-500">{e.visit_type}</span>
             </div>
             <div className="truncate text-sm text-slate-600">{e.chief_complaint || <span className="text-slate-400">No complaint recorded</span>}</div>
-            {e.diagnoses.length > 0 && <div className="truncate text-xs font-medium text-brand-700">Dx: {e.diagnoses.map((d) => d.description).join(', ')}</div>}
+            {diagnosisLine(e) && <div className="truncate text-xs font-medium text-brand-700">Dx: {diagnosisLine(e)}</div>}
           </div>
           <ChevronRight size={18} className="text-slate-300" />
         </Link>

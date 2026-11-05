@@ -1,5 +1,5 @@
 import { fmtDateTime, bmi, vitalFlag } from '@/lib/utils'
-import type { Encounter } from '@/lib/types'
+import { type Encounter, investigationText, diagnosisText } from '@/lib/types'
 import type { Treatment, Appointment } from '@/lib/queries'
 
 
@@ -55,31 +55,8 @@ export default function EncounterSummary({ e, treatments, followup }: { e: Encou
         {e.notes && <Block title="Notes"><Text v={e.notes} /></Block>}
       </div>
       <Block title="Vital signs"><VitalsGrid e={e} /></Block>
-      <Block title="Investigations">
-        {e.investigations.length === 0 ? <p className="text-sm text-slate-400">-</p> : (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
-                {e.investigations.map((i, k) => (
-                  <tr key={k}><td className="px-3 py-2 font-medium">{i.name}</td><td className="px-3 py-2">{i.result || <span className="text-slate-400">pending</span>} {i.unit}</td><td className="px-3 py-2 text-slate-500">{i.notes}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Block>
-      <Block title="Diagnosis">
-        {e.diagnoses.length === 0 ? <p className="text-sm text-slate-400">-</p> : (
-          <ul className="space-y-1">
-            {e.diagnoses.map((x, k) => (
-              <li key={k} className="flex flex-wrap items-center gap-2 text-[15px]">
-                <span className={`badge ${x.type === 'Primary' ? 'bg-brand-100 text-brand-800' : x.type === 'Differential' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600'}`}>{x.type}</span>
-                <span className="font-semibold">{x.description}</span>{x.code && <span className="font-mono text-xs text-slate-500">{x.code}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Block>
+      <Block title="Investigations"><Text v={investigationText(e) || null} /></Block>
+      <Block title="Diagnosis"><Text v={diagnosisText(e) || null} /></Block>
       <Block title="Plan"><Text v={e.plan} /></Block>
       <Block title="Treatment">
         {treatments.length === 0 ? <p className="text-sm text-slate-400">-</p> : (

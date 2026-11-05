@@ -4,7 +4,7 @@ import { sql } from '@/lib/db'
 import { getPatient, type Treatment, type Appointment } from '@/lib/queries'
 import { requireUser } from '@/lib/auth'
 import { calcAge, fmtDate, fmtDateTime } from '@/lib/utils'
-import type { Encounter } from '@/lib/types'
+import { type Encounter, diagnosisLine } from '@/lib/types'
 import { Info, StatusBadge } from '@/components/ui'
 import { VitalsGrid } from '@/components/EncounterSummary'
 import ConfirmButton from '@/components/ConfirmButton'
@@ -24,7 +24,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
                (select count(*)::int from past_records where patient_id=${id}) as past,
                (select count(*)::int from documents where patient_id=${id}) as docs`,
   ])
-  const dx = [...new Set(recent.flatMap((e) => e.diagnoses.map((d) => d.description)))]
+  const dx = recent.map((e) => ({ id: e.id, at: e.encounter_at, text: diagnosisLine(e) })).filter((x) => x.text)
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -74,7 +74,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
         <section className="card card-pad">
           <h2 className="h-section mb-3">Recent diagnoses</h2>
           {dx.length === 0 ? <p className="text-sm text-slate-400">None recorded.</p> : (
-            <div className="flex flex-wrap gap-1.5">{dx.map((d) => <span key={d} className="badge bg-brand-50 text-brand-800">{d}</span>)}</div>
+            <ul className="space-y-2 text-sm">{dx.map((d) => <li key={d.id}><Link href={`/patients/${id}/encounters/${d.id}`} className="block"><span className="text-xs text-slate-400">{fmtDate(d.at)}</span><span className="block font-medium text-slate-800">{d.text}</span></Link></li>)}</ul>
           )}
         </section>
         <section className="card card-pad">

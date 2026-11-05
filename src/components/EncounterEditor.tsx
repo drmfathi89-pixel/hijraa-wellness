@@ -3,11 +3,10 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Save, CheckCircle2, Activity, FlaskConical, ClipboardList, Pill, CalendarPlus, NotebookPen } from 'lucide-react'
 import { saveEncounter } from '@/app/actions/encounters'
-import type { EncounterPayload, Investigation, Diagnosis, TreatmentRow } from '@/lib/types'
+import type { EncounterPayload, TreatmentRow } from '@/lib/types'
 import { bmi, vitalFlag, type Flag } from '@/lib/utils'
 
 const VISIT_TYPES = ['Consultation', 'Follow-up', 'Walk-in', 'Emergency', 'Telemedicine', 'Procedure', 'Health screening']
-const QUICK_INV = ['FBC', 'Renal profile', 'LFT', 'Lipid profile', 'HbA1c', 'FBS', 'UFEME', 'Urine pregnancy test', 'ECG', 'Chest X-ray', 'Dextrostix', 'TFT']
 const KINDS = ['Medication', 'Procedure', 'Therapy', 'Injection', 'Dressing', 'Referral', 'Other']
 const FREQ = ['OD', 'BD', 'TDS', 'QID', 'ON', 'PRN', 'STAT', 'Q4H', 'Q6H', 'Q8H']
 
@@ -41,11 +40,11 @@ export default function EncounterEditor({ id, patientId, initial }: { id: string
   const setV = (k: keyof EncounterPayload['vitals'], v: string) => setD((s) => ({ ...s, vitals: { ...s.vitals, [k]: v } }))
   const n = (k: keyof EncounterPayload['vitals']) => (d.vitals[k] === '' ? null : Number(d.vitals[k]))
 
-  function updRow<T>(key: 'investigations' | 'diagnoses' | 'treatments', i: number, patch: Partial<T>) {
-    setD((s) => ({ ...s, [key]: (s[key] as T[]).map((r, j) => (j === i ? { ...r, ...patch } : r)) }))
+  function updRow<T extends TreatmentRow>(key: 'treatments', i: number, patch: Partial<T>) {
+    setD((s) => ({ ...s, [key]: s[key].map((r, j) => (j === i ? { ...r, ...patch } : r)) }))
   }
-  function delRow(key: 'investigations' | 'diagnoses' | 'treatments', i: number) {
-    setD((s) => ({ ...s, [key]: (s[key] as unknown[]).filter((_, j) => j !== i) }))
+  function delRow(key: 'treatments', i: number) {
+    setD((s) => ({ ...s, [key]: s[key].filter((_, j) => j !== i) }))
   }
 
   function submit(close: boolean) {
@@ -118,41 +117,14 @@ export default function EncounterEditor({ id, patientId, initial }: { id: string
         </div>
       </Section>
 
-      <Section icon={FlaskConical} title="Investigations" right={<button type="button" className="btn-secondary btn-sm" onClick={() => set('investigations', [...d.investigations, { name: '', result: '', unit: '', notes: '' }])}><Plus size={14} /> Add</button>}>
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {QUICK_INV.map((q) => (
-            <button key={q} type="button" className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:bg-brand-50"
-              onClick={() => set('investigations', [...d.investigations, { name: q, result: '', unit: '', notes: '' }])}>+ {q}</button>
-          ))}
-        </div>
-        <div className="space-y-2">
-          {d.investigations.length === 0 && <p className="text-sm text-slate-400">No investigations added.</p>}
-          {d.investigations.map((r, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 rounded-xl bg-slate-50 p-2">
-              <input className="input col-span-12 sm:col-span-4" placeholder="Test" value={r.name} onChange={(e) => updRow<Investigation>('investigations', i, { name: e.target.value })} />
-              <input className="input col-span-7 sm:col-span-3" placeholder="Result" value={r.result} onChange={(e) => updRow<Investigation>('investigations', i, { result: e.target.value })} />
-              <input className="input col-span-5 sm:col-span-2" placeholder="Unit" value={r.unit} onChange={(e) => updRow<Investigation>('investigations', i, { unit: e.target.value })} />
-              <input className="input col-span-10 sm:col-span-2" placeholder="Remark" value={r.notes} onChange={(e) => updRow<Investigation>('investigations', i, { notes: e.target.value })} />
-              <button type="button" className="btn-ghost col-span-2 p-2 text-red-500 sm:col-span-1" onClick={() => delRow('investigations', i)} aria-label="Remove"><Trash2 size={16} /></button>
-            </div>
-          ))}
-        </div>
+      <Section icon={FlaskConical} title="Investigations">
+        <textarea className="input min-h-[140px]" rows={6} value={d.investigation_notes} onChange={(e) => set('investigation_notes', e.target.value)}
+          placeholder="Write investigations ordered and results here" />
       </Section>
 
-      <Section icon={ClipboardList} title="Diagnosis" right={<button type="button" className="btn-secondary btn-sm" onClick={() => set('diagnoses', [...d.diagnoses, { description: '', type: d.diagnoses.length ? 'Secondary' : 'Primary', code: '' }])}><Plus size={14} /> Add</button>}>
-        <div className="space-y-2">
-          {d.diagnoses.length === 0 && <p className="text-sm text-slate-400">No diagnosis added.</p>}
-          {d.diagnoses.map((r, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 rounded-xl bg-slate-50 p-2">
-              <input className="input col-span-12 sm:col-span-6" placeholder="Diagnosis" value={r.description} onChange={(e) => updRow<Diagnosis>('diagnoses', i, { description: e.target.value })} />
-              <select className="input col-span-6 sm:col-span-3" value={r.type} onChange={(e) => updRow<Diagnosis>('diagnoses', i, { type: e.target.value as Diagnosis['type'] })}>
-                <option>Primary</option><option>Secondary</option><option>Differential</option>
-              </select>
-              <input className="input col-span-4 sm:col-span-2" placeholder="ICD-10" value={r.code} onChange={(e) => updRow<Diagnosis>('diagnoses', i, { code: e.target.value.toUpperCase() })} />
-              <button type="button" className="btn-ghost col-span-2 p-2 text-red-500 sm:col-span-1" onClick={() => delRow('diagnoses', i)} aria-label="Remove"><Trash2 size={16} /></button>
-            </div>
-          ))}
-        </div>
+      <Section icon={ClipboardList} title="Diagnosis">
+        <textarea className="input min-h-[120px]" rows={5} value={d.diagnosis_notes} onChange={(e) => set('diagnosis_notes', e.target.value)}
+          placeholder="Write the diagnosis here" />
       </Section>
 
       <Section icon={Pill} title="Management: plan & treatment" right={<button type="button" className="btn-secondary btn-sm" onClick={() => set('treatments', [...d.treatments, { kind: 'Medication', name: '', dose: '', frequency: '', duration: '', instructions: '' }])}><Plus size={14} /> Treatment</button>}>

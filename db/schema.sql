@@ -106,3 +106,13 @@ create index if not exists documents_patient_idx on documents (patient_id, creat
 
 -- v2: link follow-up appointments to the encounter that booked them
 alter table appointments add column if not exists encounter_id uuid references encounters(id) on delete set null;
+
+-- v3: investigations & diagnosis are free text written by the doctor
+alter table encounters add column if not exists investigation_notes text;
+alter table encounters add column if not exists diagnosis_notes text;
+
+-- v3: sign in with a username; email is optional
+alter table users add column if not exists username text;
+alter table users alter column email drop not null;
+update users set username = lower(email) where username is null and email is not null;
+create unique index if not exists users_username_idx on users (lower(username));

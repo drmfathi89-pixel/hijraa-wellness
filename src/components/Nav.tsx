@@ -21,7 +21,8 @@ export function Sidebar({ user }: { user: { name: string; role: string } }) {
   const path = usePathname()
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-5 lg:flex">
-      <Link href="/" className="px-2"><Logo /></Link>
+      <div className="brand-stripe absolute inset-x-0 top-0 h-1" />
+      <Link href="/" className="px-2"><Logo className="h-20 w-auto" /></Link>
       <Link href="/patients/new" className="btn-primary mt-6"><UserPlus size={16} /> New patient</Link>
       <nav className="mt-6 flex-1 space-y-1">
         {items.map(({ href, label, icon: Icon }) => (
@@ -73,8 +74,9 @@ export function BottomNav() {
 
 export function MobileHeader() {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 pb-2.5 pt-[calc(env(safe-area-inset-top)+10px)] backdrop-blur lg:hidden">
-      <Link href="/"><Logo /></Link>
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+8px)] backdrop-blur lg:hidden">
+      <div className="brand-stripe absolute inset-x-0 top-0 h-[3px]" />
+      <Link href="/"><Logo className="h-11 w-auto" /></Link>
       <Link href="/import" className="btn-ghost p-2" aria-label="Import Excel"><FileSpreadsheet size={20} /></Link>
     </header>
   )

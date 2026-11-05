@@ -1,19 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #eefbf7;
-  --color-brand-100: #d5f4ea;
-  --color-brand-200: #aee8d7;
-  --color-brand-500: #14a383;
-  --color-brand-600: #0b8a6e;
-  --color-brand-700: #0a6e59;
-  --color-brand-800: #0b5748;
-  --color-brand-900: #0a483c;
+  /* HIJRAA brand palette: blue #0017e4 (primary), red #d82b05, cyan #00f1e9, green #a8eb43 */
+  --color-brand-50: #eef0fe;
+  --color-brand-100: #dfe3fd;
+  --color-brand-200: #c3cafb;
+  --color-brand-300: #9aa6f8;
+  --color-brand-500: #2b40ef;
+  --color-brand-600: #0017e4;
+  --color-brand-700: #0013bd;
+  --color-brand-800: #001096;
+  --color-brand-900: #000c70;
+  --color-heart: #d82b05;
+  --color-heart-dark: #a82104;
+  --color-pulse: #00f1e9;
+  --color-leaf: #a8eb43;
+  --color-leaf-dark: #3b6a0a;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 html { -webkit-tap-highlight-color: transparent; }
-body { background: #f4f7f6; color: #10201c; }
+body { background: #f5f6fb; color: #0f1430; }
+
+/* thin brand stripe echoing the logo colours */
+.brand-stripe { background: linear-gradient(90deg, var(--color-heart), var(--color-brand-600) 40%, var(--color-pulse) 75%, var(--color-leaf)); }
 
 @layer components {
   .card { @apply min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-sm; }
@@ -35,6 +45,6 @@ body { background: #f4f7f6; color: #10201c; }
 @utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50; }
 @utility btn-primary { @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700; }
 @utility btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
-@utility btn-danger { @apply btn border border-red-200 bg-white text-red-600 hover:bg-red-50; }
+@utility btn-danger { @apply btn border border-heart/30 bg-white text-heart hover:bg-heart/5; }
 @utility btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
 @utility btn-sm { @apply px-3 py-1.5 text-xs; }

@@ -11,14 +11,14 @@ export const metadata = { title: 'Settings' }
 
 export default async function Settings() {
   const me = await requireUser()
-  const users = me.role === 'admin' ? await sql<{ id: string; name: string; email: string; role: string; active: boolean }[]>`select id, name, email, role, active from users order by created_at` : []
+  const users = me.role === 'admin' ? await sql<{ id: string; name: string; username: string | null; email: string | null; role: string; active: boolean }[]>`select id, name, username, email, role, active from users order by created_at` : []
   return (
     <>
       <PageHeader title="Settings" />
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card card-pad">
           <h2 className="h-section mb-1">My account</h2>
-          <p className="text-sm text-slate-600">{me.name} · {me.email} · <span className="capitalize">{me.role}</span></p>
+          <p className="text-sm text-slate-600">{me.name} · @{me.username}{me.email ? ` · ${me.email}` : ''} · <span className="capitalize">{me.role}</span></p>
           <div className="mt-3 flex flex-wrap gap-2">
             <MiniForm action={changePassword} label="Change password" submit="Update password">
               <Field label="Current password"><input type="password" name="current" className="input" required autoComplete="current-password" /></Field>
@@ -34,7 +34,8 @@ export default async function Settings() {
               <h2 className="h-section">Clinic users</h2>
               <MiniForm action={addUser} label="Add user" submit="Create user">
                 <Field label="Full name"><input name="name" className="input" required /></Field>
-                <Field label="Email"><input type="email" name="email" className="input" required /></Field>
+                <Field label="Username"><input name="username" className="input" required autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="e.g. drsiti" /></Field>
+                <Field label="Email (optional)"><input type="email" name="email" className="input" /></Field>
                 <Field label="Role"><select name="role" className="input"><option value="doctor">Doctor</option><option value="staff">Staff</option><option value="admin">Admin</option></select></Field>
                 <Field label="Temporary password"><input type="text" name="password" className="input" required minLength={8} /></Field>
               </MiniForm>
@@ -44,7 +45,7 @@ export default async function Settings() {
                 <li key={u.id} className="flex flex-wrap items-center gap-2 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold">{u.name} {!u.active && <span className="badge bg-slate-200 text-slate-600">disabled</span>}</div>
-                    <div className="text-xs text-slate-500">{u.email} · <span className="capitalize">{u.role}</span></div>
+                    <div className="text-xs text-slate-500">@{u.username ?? '-'}{u.email ? ` · ${u.email}` : ''} · <span className="capitalize">{u.role}</span></div>
                   </div>
                   {u.id !== me.id && (
                     <>

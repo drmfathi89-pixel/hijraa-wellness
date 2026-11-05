@@ -1,6 +1,6 @@
 // HIJRAA WELLNESS service worker.
 // Patient data is never cached (privacy). Only static assets + an offline page are cached.
-const CACHE = 'hijraa-static-v1'
+const CACHE = 'hijraa-static-v2'
 const PRECACHE = ['/offline', '/icons/icon-192.png']
 
 self.addEventListener('install', (e) => {
@@ -20,7 +20,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== location.origin) return
 
   // Immutable build assets: cache-first
-  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/') || url.pathname === '/pdf.worker.min.mjs') {
+  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/') || url.pathname.startsWith('/brand/') || url.pathname === '/pdf.worker.min.mjs') {
     e.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
         const copy = res.clone()

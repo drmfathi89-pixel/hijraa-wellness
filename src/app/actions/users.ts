@@ -3,19 +3,25 @@ import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
-import { str } from '@/lib/utils'
+import { str, cleanUsername } from '@/lib/utils'
 import type { FormState } from './auth'
 
 export async function addUser(_: FormState, fd: FormData): Promise<FormState> {
   await requireAdmin()
-  const name = str(fd.get('name')), email = str(fd.get('email'))?.toLowerCase(), role = String(fd.get('role') ?? 'doctor')
+  const name = str(fd.get('name')), username = cleanUsername(fd.get('username')), role = String(fd.get('role') ?? 'doctor')
+  const email = str(fd.get('email'))?.toLowerCase() ?? null
   const password = String(fd.get('password') ?? '')
-  if (!name || !email) return { error: 'Name and email are required' }
+  if (!name) return { error: 'Full name is required' }
+  if (!username) return { error: 'Username must be 3-32 letters, numbers, dots, dashes or underscores' }
   if (!['admin', 'doctor', 'staff'].includes(role)) return { error: 'Invalid role' }
   if (password.length < 8) return { error: 'Password must be at least 8 characters' }
-  const [exists] = await sql`select 1 from users where email=${email}`
-  if (exists) return { error: 'Email already in use' }
-  await sql`insert into users (name, email, password_hash, role) values (${name}, ${email}, ${await bcrypt.hash(password, 10)}, ${role})`
+  const [taken] = await sql`select 1 from users where lower(username) = ${username}`
+  if (taken) return { error: 'That username is already taken' }
+  if (email) {
+    const [exists] = await sql`select 1 from users where lower(email) = ${email}`
+    if (exists) return { error: 'Email already in use' }
+  }
+  await sql`insert into users (name, username, email, password_hash, role) values (${name}, ${username}, ${email}, ${await bcrypt.hash(password, 10)}, ${role})`
   revalidatePath('/settings')
   return { ok: `User ${name} created` }
 }

@@ -1,5 +1,5 @@
 'use client'
-import { useActionState, useState } from 'react'
+import { useActionState, startTransition, useState } from 'react'
 import type { FormState } from '@/app/actions/auth'
 import { parseIC, calcAge } from '@/lib/utils'
 
@@ -19,7 +19,7 @@ export default function PatientForm({ action, initial = {}, submit }: { action: 
   }
 
   return (
-    <form action={formAction} className="card card-pad grid gap-4 sm:grid-cols-2">
+    <form onSubmit={keepValues(formAction)} className="card card-pad grid gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <label className="label">Full name *</label>
         <input name="name" defaultValue={initial.name} className="input uppercase" required autoComplete="off" />
@@ -61,4 +61,13 @@ export default function PatientForm({ action, initial = {}, submit }: { action: 
       </div>
     </form>
   )
+}
+
+// Submit without React's automatic form reset, so a validation error keeps what was typed.
+function keepValues(dispatch: (fd: FormData) => void) {
+  return (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(() => dispatch(fd))
+  }
 }

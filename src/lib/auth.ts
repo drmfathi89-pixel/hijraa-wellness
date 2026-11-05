@@ -9,7 +9,7 @@ import { sessionKey } from './session-key'
 export const SESSION_COOKIE = 'hw_session'
 const MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
-export type SessionUser = { id: string; name: string; email: string; role: 'admin' | 'doctor' | 'staff' }
+export type SessionUser = { id: string; name: string; username: string; email: string | null; role: 'admin' | 'doctor' | 'staff' }
 
 
 export async function createSession(userId: string) {
@@ -32,7 +32,7 @@ export const getUser = cache(async (): Promise<SessionUser | null> => {
   if (!token) return null
   try {
     const { payload } = await jwtVerify(token, await sessionKey())
-    const [u] = await sql<SessionUser[]>`select id, name, email, role from users where id = ${payload.sub as string} and active`
+    const [u] = await sql<SessionUser[]>`select id, name, username, email, role from users where id = ${payload.sub as string} and active`
     return u ?? null
   } catch {
     return null

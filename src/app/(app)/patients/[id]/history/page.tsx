@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Trash2 } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { fmtDate, toLocalInput } from '@/lib/utils'
-import type { Encounter } from '@/lib/types'
+import { type Encounter, diagnosisLine } from '@/lib/types'
 import { addPastRecord, deletePastRecord } from '@/app/actions/records'
 import PastRecordForm from '@/components/PastRecordForm'
 import ExcelImport from '@/components/ExcelImport'
@@ -66,7 +66,7 @@ export default async function History({ params }: { params: Promise<{ id: string
                     <span className="badge bg-brand-100 text-brand-800">HIJRAA · {it.e.visit_type}</span>
                   </div>
                   <div className="text-sm">{it.e.chief_complaint}</div>
-                  {it.e.diagnoses.length > 0 && <div className="text-sm font-semibold text-brand-800">Dx: {it.e.diagnoses.map((d) => d.description).join(', ')}</div>}
+                  {diagnosisLine(it.e) && <div className="text-sm font-semibold text-brand-800">Dx: {diagnosisLine(it.e)}</div>}
                 </Link>
               )}
             </li>

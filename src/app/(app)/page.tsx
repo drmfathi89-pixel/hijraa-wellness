@@ -7,6 +7,7 @@ import { fmtTime, fmtDateTime, TZ } from '@/lib/utils'
 import SearchBox from '@/components/SearchBox'
 import { StatusBadge } from '@/components/ui'
 import PatientRow from '@/components/PatientRow'
+import { diagnosisLine } from '@/lib/types'
 import { searchPatients } from '@/lib/queries'
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -21,7 +22,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     sql`select a.id, a.scheduled_at, a.reason, a.status, a.patient_id, p.name from appointments a join patients p on p.id=a.patient_id
       where (a.scheduled_at at time zone ${TZ})::date = (now() at time zone ${TZ})::date and a.status <> 'cancelled' order by a.scheduled_at`,
     sql`select e.id, e.patient_id, e.encounter_at, e.chief_complaint, p.name from encounters e join patients p on p.id=e.patient_id where e.status='open' order by e.encounter_at desc limit 10`,
-    sql`select e.id, e.patient_id, e.encounter_at, e.diagnoses, p.name from encounters e join patients p on p.id=e.patient_id where e.status='closed' order by e.updated_at desc limit 6`,
+    sql`select e.id, e.patient_id, e.encounter_at, e.diagnoses, e.diagnosis_notes, p.name from encounters e join patients p on p.id=e.patient_id where e.status='closed' order by e.updated_at desc limit 6`,
   ])
   const hour = Number(new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: TZ }))
   const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -86,7 +87,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               {recent.map((e) => (
                 <li key={e.id}><Link href={`/patients/${e.patient_id}/encounters/${e.id}`} className="block rounded-xl bg-slate-50 px-3 py-2 hover:bg-brand-50">
                   <div className="truncate font-semibold">{e.name}</div>
-                  <div className="truncate text-xs text-slate-500">{fmtDateTime(e.encounter_at)}{e.diagnoses.length ? ` · ${e.diagnoses.map((d: { description: string }) => d.description).join(', ')}` : ''}</div>
+                  <div className="truncate text-xs text-slate-500">{fmtDateTime(e.encounter_at)}{diagnosisLine(e as never) ? ` · ${diagnosisLine(e as never)}` : ''}</div>
                 </Link></li>
               ))}
             </ul>
