@@ -5,6 +5,11 @@ import { readFileSync } from 'node:fs'
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
 if (!url) {
+  if (process.env.VERCEL || process.env.VERCEL_ENV || process.env.VERCEL_URL) {
+    // Fail the Vercel build instead of shipping a site that can't reach its database.
+    console.error('[migrate] DATABASE_URL is not set. In Vercel: Project > Settings > Environment Variables > add DATABASE_URL (Neon pooled connection string), then redeploy.')
+    process.exit(1)
+  }
   console.warn('[migrate] DATABASE_URL_UNPOOLED / DATABASE_URL not set - skipping migration')
   process.exit(0)
 }
