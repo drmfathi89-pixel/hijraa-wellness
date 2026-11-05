@@ -122,3 +122,14 @@ alter table encounters add column if not exists imaging_notes text;
 alter table encounters add column if not exists diagnosis_sensitive boolean not null default false;
 alter table encounters add column if not exists diagnosis_notifiable boolean not null default false;
 alter table encounters add column if not exists charges jsonb not null default '[]';
+
+-- v5: clinic price list (consultation types, procedures, medications...), managed by admins
+create table if not exists charge_items (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null default 'Consultation',
+  name text not null,
+  price numeric(10,2) not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists charge_items_name_idx on charge_items (lower(kind), lower(name));

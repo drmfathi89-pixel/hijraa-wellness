@@ -3,12 +3,11 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Save, CheckCircle2, Activity, FlaskConical, ClipboardList, Pill, CalendarPlus, NotebookPen, Stethoscope, Receipt, History } from 'lucide-react'
 import { saveEncounter } from '@/app/actions/encounters'
-import { type EncounterPayload, type TreatmentRow, type ChargeRow, chargesTotal, rm } from '@/lib/types'
+import { type EncounterPayload, type TreatmentRow, type ChargeRow, type PriceItem, chargesTotal, rm } from '@/lib/types'
 import { bmi, vitalFlag, type Flag } from '@/lib/utils'
 
 const VISIT_TYPES = ['Consultation', 'Follow-up', 'Walk-in', 'Emergency', 'Telemedicine', 'Procedure', 'Health screening']
 const KINDS = ['Medication', 'Procedure', 'Therapy', 'Injection', 'Dressing', 'Referral', 'Other']
-const CHARGE_ITEMS = ['Consultation', 'Medication', 'Procedure', 'Injection', 'Laboratory test', 'Dressing', 'Medical certificate']
 const FREQ = ['OD', 'BD', 'TDS', 'QID', 'ON', 'PRN', 'STAT', 'Q4H', 'Q6H', 'Q8H']
 
 function Section({ icon: Icon, title, children, right }: { icon: React.ElementType; title: string; children: React.ReactNode; right?: React.ReactNode }) {
@@ -33,7 +32,7 @@ function FlagTag({ f }: { f: Flag }) {
 
 export type PrevDx = { date: string; text: string; source: string }
 
-export default function EncounterEditor({ id, patientId, initial, previousDx = [] }: { id: string; patientId: string; initial: EncounterPayload; previousDx?: PrevDx[] }) {
+export default function EncounterEditor({ id, patientId, initial, previousDx = [], priceList = [] }: { id: string; patientId: string; initial: EncounterPayload; previousDx?: PrevDx[]; priceList?: PriceItem[] }) {
   const router = useRouter()
   const [d, setD] = useState<EncounterPayload>(initial)
   const [pending, start] = useTransition()
@@ -54,7 +53,7 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
   const addDx = (v = '') => setD((s) => ({ ...s, diagnosis_list: s.diagnosis_list.length === 1 && !s.diagnosis_list[0] && v ? [v] : [...s.diagnosis_list, v] }))
   const delDx = (i: number) => setD((s) => ({ ...s, diagnosis_list: s.diagnosis_list.length > 1 ? s.diagnosis_list.filter((_, j) => j !== i) : [''] }))
   const setCh = (i: number, p: Partial<ChargeRow>) => setD((s) => ({ ...s, charges: s.charges.map((c, j) => (j === i ? { ...c, ...p } : c)) }))
-  const addCh = (item = '') => setD((s) => ({ ...s, charges: [...s.charges, { item, qty: '1', price: '' }] }))
+  const addCh = (item = '', price = '') => setD((s) => ({ ...s, charges: [...s.charges, { item, qty: '1', price }] }))
   const delCh = (i: number) => setD((s) => ({ ...s, charges: s.charges.filter((_, j) => j !== i) }))
 
   function submit(close: boolean) {
@@ -202,10 +201,18 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
       </Section>
 
       <Section icon={Receipt} title="Charges" right={<button type="button" className="btn-secondary btn-sm" onClick={() => addCh()}><Plus size={14} /> Item</button>}>
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {CHARGE_ITEMS.map((c) => (
-            <button key={c} type="button" className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:bg-brand-50" onClick={() => addCh(c)}>+ {c}</button>
-          ))}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {priceList.length > 0 ? (
+            <select className="input max-w-sm" value="" aria-label="Add from price list"
+              onChange={(e) => { const p = priceList.find((x) => x.id === e.target.value); if (p) addCh(p.name, p.price.toFixed(2)) }}>
+              <option value="">+ Add from price list…</option>
+              {[...new Set(priceList.map((p) => p.kind))].map((k) => (
+                <optgroup key={k} label={k}>
+                  {priceList.filter((p) => p.kind === k).map((p) => <option key={p.id} value={p.id}>{p.name}: {rm(p.price)}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          ) : <p className="text-xs text-slate-400">Tip: an admin can set up consultation types and prices in Settings → Price list.</p>}
           {d.treatments.some((t) => t.name.trim()) && (
             <button type="button" className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"
               onClick={() => setD((s) => ({ ...s, charges: [...s.charges, ...s.treatments.filter((t) => t.name.trim() && !s.charges.some((c) => c.item === t.name.trim())).map((t) => ({ item: t.name.trim(), qty: '1', price: '' }))] }))}>

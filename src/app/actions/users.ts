@@ -40,3 +40,23 @@ export async function resetPassword(id: string, _: FormState, fd: FormData): Pro
   await sql`update users set password_hash=${await bcrypt.hash(password, 10)} where id=${id}`
   return { ok: 'Password reset' }
 }
+
+export async function updateUser(id: string, _: FormState, fd: FormData): Promise<FormState> {
+  const me = await requireAdmin()
+  const name = str(fd.get('name')), username = cleanUsername(fd.get('username'))
+  const email = str(fd.get('email'))?.toLowerCase() ?? null
+  const role = String(fd.get('role') ?? '')
+  if (!name) return { error: 'Full name is required' }
+  if (!username) return { error: 'Username must be 3-32 letters, numbers, dots, dashes or underscores' }
+  if (!['admin', 'doctor', 'staff'].includes(role)) return { error: 'Invalid role' }
+  if (id === me.id && role !== 'admin') return { error: 'You cannot remove your own admin role' }
+  const [taken] = await sql`select 1 from users where lower(username) = ${username} and id <> ${id}`
+  if (taken) return { error: 'That username is already taken' }
+  if (email) {
+    const [exists] = await sql`select 1 from users where lower(email) = ${email} and id <> ${id}`
+    if (exists) return { error: 'Email already in use' }
+  }
+  await sql`update users set name=${name}, username=${username}, email=${email}, role=${role} where id=${id}`
+  revalidatePath('/settings')
+  return { ok: 'User updated' }
+}

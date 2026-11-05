@@ -57,3 +57,6 @@ export const chargesTotal = (c: { qty: number | string; price: number | string }
   c.reduce((t, x) => t + (Number(x.qty) || 0) * (Number(x.price) || 0), 0)
 
 export const rm = (n: number) => 'RM ' + n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+export const CHARGE_KINDS = ['Consultation', 'Procedure', 'Medication', 'Injection', 'Laboratory', 'Imaging', 'Dressing', 'Medical certificate', 'Other']
+export type PriceItem = { id: string; kind: string; name: string; price: number; active: boolean }

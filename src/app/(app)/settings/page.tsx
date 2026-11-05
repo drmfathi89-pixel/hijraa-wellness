@@ -2,7 +2,9 @@ import { LogOut } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
 import { logout, changePassword } from '@/app/actions/auth'
-import { addUser, toggleUser, resetPassword } from '@/app/actions/users'
+import { addUser, toggleUser, resetPassword, updateUser } from '@/app/actions/users'
+import { addPrice, updatePrice, togglePrice } from '@/app/actions/prices'
+import { CHARGE_KINDS, rm, type PriceItem } from '@/lib/types'
 import { PageHeader, Field } from '@/components/ui'
 import MiniForm from '@/components/MiniForm'
 import InstallHint from '@/components/InstallHint'
@@ -12,6 +14,8 @@ export const metadata = { title: 'Settings' }
 export default async function Settings() {
   const me = await requireUser()
   const users = me.role === 'admin' ? await sql<{ id: string; name: string; username: string | null; email: string | null; role: string; active: boolean }[]>`select id, name, username, email, role, active from users order by created_at` : []
+  const prices = me.role === 'admin' ? await sql<PriceItem[]>`select id, kind, name, price, active from charge_items order by kind, lower(name)` : []
+  const kinds = [...new Set(prices.map((p) => p.kind))]
   return (
     <>
       <PageHeader title="Settings" />
@@ -47,6 +51,14 @@ export default async function Settings() {
                     <div className="font-semibold">{u.name} {!u.active && <span className="badge bg-slate-200 text-slate-600">disabled</span>}</div>
                     <div className="text-xs text-slate-500">@{u.username ?? '-'}{u.email ? ` · ${u.email}` : ''} · <span className="capitalize">{u.role}</span></div>
                   </div>
+                  <MiniForm action={updateUser.bind(null, u.id)} label="Edit" submit="Save">
+                    <Field label="Full name"><input name="name" className="input" required defaultValue={u.name} /></Field>
+                    <Field label="Username"><input name="username" className="input" required defaultValue={u.username ?? ''} autoCapitalize="none" autoCorrect="off" spellCheck={false} /></Field>
+                    <Field label="Email (optional)"><input type="email" name="email" className="input" defaultValue={u.email ?? ''} /></Field>
+                    <Field label="Role">
+                      <select name="role" className="input" defaultValue={u.role}><option value="doctor">Doctor</option><option value="staff">Staff</option><option value="admin">Admin</option></select>
+                    </Field>
+                  </MiniForm>
                   {u.id !== me.id && (
                     <>
                       <MiniForm action={resetPassword.bind(null, u.id)} label="Reset password" submit="Set">
@@ -58,6 +70,40 @@ export default async function Settings() {
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+        {me.role === 'admin' && (
+          <section className="card card-pad lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="h-section">Price list</h2>
+                <p className="text-xs text-slate-500">Consultation types, procedures, medications and other chargeable items. Doctors pick these in an encounter&apos;s Charges.</p>
+              </div>
+              <MiniForm action={addPrice} label="Add item" submit="Add">
+                <Field label="Type"><select name="kind" className="input">{CHARGE_KINDS.map((k) => <option key={k}>{k}</option>)}</select></Field>
+                <Field label="Name"><input name="name" className="input" required placeholder="e.g. General consultation" /></Field>
+                <Field label="Price (RM)"><input name="price" type="number" inputMode="decimal" min="0" step="0.01" className="input" required placeholder="0.00" /></Field>
+              </MiniForm>
+            </div>
+            {prices.length === 0 ? <p className="mt-4 text-sm text-slate-400">No items yet. Add your consultation fees, procedures and medications.</p> : kinds.map((k) => (
+              <div key={k} className="mt-4">
+                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-brand-700">{k}</h3>
+                <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100">
+                  {prices.filter((p) => p.kind === k).map((p) => (
+                    <li key={p.id} className={`flex flex-wrap items-center gap-2 px-3 py-2 ${p.active ? '' : 'opacity-50'}`}>
+                      <span className="min-w-0 flex-1 font-medium">{p.name} {!p.active && <span className="badge bg-slate-200 text-slate-600">hidden</span>}</span>
+                      <span className="font-semibold">{rm(p.price)}</span>
+                      <MiniForm action={updatePrice.bind(null, p.id)} label="Edit" submit="Save">
+                        <Field label="Type"><select name="kind" className="input" defaultValue={p.kind}>{CHARGE_KINDS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                        <Field label="Name"><input name="name" className="input" required defaultValue={p.name} /></Field>
+                        <Field label="Price (RM)"><input name="price" type="number" inputMode="decimal" min="0" step="0.01" className="input" required defaultValue={p.price.toFixed(2)} /></Field>
+                      </MiniForm>
+                      <form action={togglePrice.bind(null, p.id)}><button className="btn-secondary btn-sm">{p.active ? 'Hide' : 'Show'}</button></form>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </section>
         )}
       </div>

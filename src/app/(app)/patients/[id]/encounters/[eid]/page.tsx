@@ -9,7 +9,7 @@ import EncounterSummary from '@/components/EncounterSummary'
 import ConfirmButton from '@/components/ConfirmButton'
 import PrintButton from '@/components/PrintButton'
 import { StatusBadge } from '@/components/ui'
-import { type EncounterPayload, type Encounter, investigationText, diagnosisText } from '@/lib/types'
+import { type EncounterPayload, type Encounter, type PriceItem, investigationText, diagnosisText } from '@/lib/types'
 import { requireUser } from '@/lib/auth'
 
 const s = (v: unknown) => (v == null ? '' : String(v))
@@ -49,9 +49,10 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
     )
   }
 
-  const [prevEnc, prevPast] = await Promise.all([
+  const [prevEnc, prevPast, priceList] = await Promise.all([
     sql<Encounter[]>`select * from encounters where patient_id = ${id} and id <> ${eid} order by encounter_at desc limit 30`,
     sql<{ visit_date: string | null; diagnosis: string; facility: string | null }[]>`select visit_date, diagnosis, facility from past_records where patient_id = ${id} and diagnosis is not null order by visit_date desc nulls last limit 30`,
+    sql<PriceItem[]>`select id, kind, name, price, active from charge_items where active order by kind, lower(name)`,
   ])
   const previousDx = [
     ...prevEnc.flatMap((p) => diagnosisText(p).split('\n').filter((x) => x.trim()).map((text) => ({ date: fmtDate(p.encounter_at), text: text.trim(), source: 'HIJRAA' }))),
@@ -77,7 +78,7 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
   return (
     <>
       {header}
-      <EncounterEditor id={eid} patientId={id} initial={initial} previousDx={previousDx} />
+      <EncounterEditor id={eid} patientId={id} initial={initial} previousDx={previousDx} priceList={priceList} />
     </>
   )
 }
