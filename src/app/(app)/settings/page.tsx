@@ -1,6 +1,8 @@
 import { LogOut } from 'lucide-react'
 import { sql } from '@/lib/db'
-import { requireUser } from '@/lib/auth'
+import { requireUser, isAdmin } from '@/lib/auth'
+import { rolesText } from '@/lib/utils'
+import RolePicker from '@/components/RolePicker'
 import { logout, changePassword } from '@/app/actions/auth'
 import { addUser, toggleUser, resetPassword, updateUser } from '@/app/actions/users'
 import { addPrice, updatePrice, togglePrice } from '@/app/actions/prices'
@@ -14,8 +16,8 @@ export const metadata = { title: 'Settings' }
 
 export default async function Settings() {
   const me = await requireUser()
-  const users = me.role === 'admin' ? await sql<{ id: string; name: string; username: string | null; email: string | null; role: string; active: boolean }[]>`select id, name, username, email, role, active from users order by created_at` : []
-  const prices = me.role === 'admin' ? await sql<PriceItem[]>`select id, kind, name, price, active from charge_items order by kind, lower(name)` : []
+  const users = isAdmin(me) ? await sql<{ id: string; name: string; username: string | null; email: string | null; roles: string[]; active: boolean }[]>`select id, name, username, email, roles, active from users order by created_at` : []
+  const prices = isAdmin(me) ? await sql<PriceItem[]>`select id, kind, name, price, active from charge_items order by kind, lower(name)` : []
   const kinds = [...new Set(prices.map((p) => p.kind))]
   return (
     <>
@@ -23,7 +25,7 @@ export default async function Settings() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card card-pad">
           <h2 className="h-section mb-1">My account</h2>
-          <p className="text-sm text-slate-600">{me.name} · @{me.username}{me.email ? ` · ${me.email}` : ''} · <span className="capitalize">{me.role}</span></p>
+          <p className="text-sm text-slate-600">{me.name} · @{me.username}{me.email ? ` · ${me.email}` : ''} · <span>{rolesText(me.roles)}</span></p>
           <div className="mt-3 flex flex-wrap gap-2">
             <MiniForm action={changePassword} label="Change password" submit="Update password">
               <Field label="Current password"><input type="password" name="current" className="input" required autoComplete="current-password" /></Field>
@@ -33,7 +35,7 @@ export default async function Settings() {
           <form action={logout} className="mt-4"><button className="btn-danger w-full sm:w-auto"><LogOut size={16} /> Log out</button></form>
         </section>
         <InstallHint />
-        {me.role === 'admin' && (
+        {isAdmin(me) && (
           <section className="card card-pad lg:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="h-section">Clinic users</h2>
@@ -41,7 +43,7 @@ export default async function Settings() {
                 <Field label="Full name"><input name="name" className="input" required /></Field>
                 <Field label="Username"><input name="username" className="input" required autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="e.g. drsiti" /></Field>
                 <Field label="Email (optional)"><input type="email" name="email" className="input" /></Field>
-                <Field label="Role"><select name="role" className="input"><option value="doctor">Doctor</option><option value="staff">Staff</option><option value="admin">Admin</option></select></Field>
+                <Field label="Roles"><RolePicker /></Field>
                 <Field label="Temporary password"><input type="text" name="password" className="input" required minLength={8} /></Field>
               </MiniForm>
             </div>
@@ -50,15 +52,13 @@ export default async function Settings() {
                 <li key={u.id} className="flex flex-wrap items-center gap-2 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold">{u.name} {!u.active && <span className="badge bg-slate-200 text-slate-600">disabled</span>}</div>
-                    <div className="text-xs text-slate-500">@{u.username ?? '-'}{u.email ? ` · ${u.email}` : ''} · <span className="capitalize">{u.role}</span></div>
+                    <div className="text-xs text-slate-500">@{u.username ?? '-'}{u.email ? ` · ${u.email}` : ''} · <span>{rolesText(u.roles)}</span></div>
                   </div>
                   <MiniForm action={updateUser.bind(null, u.id)} label="Edit" submit="Save">
                     <Field label="Full name"><input name="name" className="input" required defaultValue={u.name} /></Field>
                     <Field label="Username"><input name="username" className="input" required defaultValue={u.username ?? ''} autoCapitalize="none" autoCorrect="off" spellCheck={false} /></Field>
                     <Field label="Email (optional)"><input type="email" name="email" className="input" defaultValue={u.email ?? ''} /></Field>
-                    <Field label="Role">
-                      <select name="role" className="input" defaultValue={u.role}><option value="doctor">Doctor</option><option value="staff">Staff</option><option value="admin">Admin</option></select>
-                    </Field>
+                    <Field label="Roles"><RolePicker value={u.roles} /></Field>
                   </MiniForm>
                   {u.id !== me.id && (
                     <>
@@ -73,7 +73,7 @@ export default async function Settings() {
             </ul>
           </section>
         )}
-        {me.role === 'admin' && (
+        {isAdmin(me) && (
           <section className="card card-pad lg:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>

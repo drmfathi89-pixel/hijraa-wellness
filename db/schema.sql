@@ -133,3 +133,9 @@ create table if not exists charge_items (
   created_at timestamptz not null default now()
 );
 create unique index if not exists charge_items_name_idx on charge_items (lower(kind), lower(name));
+
+-- v6: a user can hold several roles (e.g. admin + doctor)
+alter table users add column if not exists roles text[];
+update users set roles = array[role] where roles is null;
+alter table users alter column roles set default '{doctor}';
+alter table users alter column roles set not null;

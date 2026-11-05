@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Users, CalendarDays, FileSpreadsheet, Settings, UserPlus, LogOut } from 'lucide-react'
 import { Logo } from './Logo'
 import { logout } from '@/app/actions/auth'
+import { rolesText } from '@/lib/utils'
 
 const items = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,7 +18,7 @@ function isActive(path: string, href: string) {
   return href === '/' ? path === '/' : path.startsWith(href)
 }
 
-export function Sidebar({ user }: { user: { name: string; role: string } }) {
+export function Sidebar({ user }: { user: { name: string; roles: string[] } }) {
   const path = usePathname()
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-5 lg:flex">
@@ -34,7 +35,7 @@ export function Sidebar({ user }: { user: { name: string; role: string } }) {
       <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold">{user.name}</div>
-          <div className="text-xs capitalize text-slate-500">{user.role}</div>
+          <div className="text-xs text-slate-500">{rolesText(user.roles)}</div>
         </div>
         <form action={logout}><button className="btn-ghost p-2" title="Log out"><LogOut size={16} /></button></form>
       </div>

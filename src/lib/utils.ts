@@ -77,6 +77,16 @@ export function bmi(weight?: number | null, height?: number | null): string | nu
   return (weight / (h * h)).toFixed(1)
 }
 
+export const ROLES = ['admin', 'doctor', 'staff'] as const
+export const ROLE_LABEL: Record<string, string> = { admin: 'Admin', doctor: 'Doctor', staff: 'Staff' }
+export const rolesText = (r: string[]) => r.map((x) => ROLE_LABEL[x] ?? x).join(' + ')
+
+/** Roles ticked in a form (checkboxes named "roles"), in a fixed order. */
+export function readRoles(fd: FormData): string[] {
+  const picked = new Set(fd.getAll('roles').map(String))
+  return ROLES.filter((r) => picked.has(r))
+}
+
 export const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
 
 /** Lower-cased username, or null if it isn't 3-32 letters, digits, dots, dashes or underscores. */
