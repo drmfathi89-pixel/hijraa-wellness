@@ -24,6 +24,50 @@ function Section({ icon: Icon, title, children, right }: { icon: React.ElementTy
   )
 }
 
+/** Charge item box that suggests matching price-list items as you type; picking one fills the price. */
+function ItemInput({ value, items, onChange, onPick, className = '' }: { value: string; items: PriceItem[]; onChange: (v: string) => void; onPick: (p: PriceItem) => void; className?: string }) {
+  const [open, setOpen] = useState(false)
+  const [hi, setHi] = useState(0)
+  const q = value.trim().toLowerCase()
+  const matches = (q ? items.filter((p) => p.name.toLowerCase().includes(q) || p.kind.toLowerCase().includes(q)) : items).slice(0, 8)
+  const show = open && matches.length > 0 && !(matches.length === 1 && matches[0].name.toLowerCase() === q)
+  function pick(p: PriceItem) { onPick(p); setOpen(false) }
+  return (
+    <div className={`relative ${className}`}>
+      <input className="input" placeholder={items.length ? 'Item: type to search the price list' : 'Item'} value={value} autoComplete="off"
+        role="combobox" aria-expanded={show} aria-autocomplete="list"
+        onChange={(e) => { onChange(e.target.value); setOpen(true); setHi(0) }}
+        onFocus={(e) => {
+          setOpen(true)
+          // keep room for the suggestions above the bottom save bar / phone keyboard
+          const r = e.currentTarget.getBoundingClientRect()
+          if (r.top > window.innerHeight * 0.35) window.scrollBy({ top: r.top - 96, behavior: 'smooth' })
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (!show) return
+          if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(h + 1, matches.length - 1)) }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)) }
+          else if (e.key === 'Enter') { e.preventDefault(); pick(matches[hi]) }
+          else if (e.key === 'Escape') setOpen(false)
+        }} />
+      {show && (
+        <ul role="listbox" className="absolute z-40 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+          {matches.map((p, k) => (
+            <li key={p.id} role="option" aria-selected={k === hi}>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(p)}
+                className={`flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm ${k === hi ? 'bg-brand-50' : 'hover:bg-slate-50'}`}>
+                <span className="min-w-0"><span className="block truncate font-medium text-slate-800">{p.name}</span><span className="text-xs text-slate-400">{p.kind}</span></span>
+                <span className="shrink-0 font-semibold text-slate-900">{rm(p.price)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export type PrevDx = { date: string; text: string; source: string }
 
 export default function EncounterEditor({ id, patientId, initial, previousDx = [], priceList = [] }: { id: string; patientId: string; initial: EncounterPayload; previousDx?: PrevDx[]; priceList?: PriceItem[] }) {
@@ -183,7 +227,8 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
             </div>
             {d.charges.map((c, i) => (
               <div key={i} className="grid grid-cols-12 items-center gap-2 rounded-xl bg-slate-50 p-2">
-                <input className="input col-span-12 sm:col-span-6" placeholder="Item" value={c.item} onChange={(e) => setCh(i, { item: e.target.value })} />
+                <ItemInput className="col-span-12 sm:col-span-6" value={c.item} items={priceList}
+                  onChange={(item) => setCh(i, { item })} onPick={(p) => setCh(i, { item: p.name, price: p.price.toFixed(2) })} />
                 <input className="input col-span-3 sm:col-span-2" type="number" inputMode="numeric" min="1" placeholder="Qty" value={c.qty} onChange={(e) => setCh(i, { qty: e.target.value })} />
                 <input className="input col-span-4 sm:col-span-2" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={c.price} onChange={(e) => setCh(i, { price: e.target.value })} />
                 <span className="col-span-3 text-right text-sm font-semibold sm:col-span-1">{rm((Number(c.qty) || 0) * (Number(c.price) || 0)).replace('RM ', '')}</span>
