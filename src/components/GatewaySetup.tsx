@@ -65,7 +65,7 @@ export default function GatewaySetup({ initial }: { initial: { provider: string;
               <p className="flex items-center gap-2 font-semibold"><Monitor size={16} /> Use the clinic PC as the gateway</p>
               <ol className="ml-4 list-decimal space-y-1 text-xs">
                 <li>Install <b>Node.js LTS</b> on the clinic PC from nodejs.org (one time).</li>
-                <li>Download <a className="font-semibold text-brand-700 underline" href="/downloads/hijraa-pc-gateway.zip">HIJRAA PC Gateway</a>, unzip it, and double-click <b>start.bat</b>.</li>
+                <li>Download <a className="font-semibold text-brand-700 underline" href="/downloads/hijraa-pc-gateway.zip">HIJRAA PC Gateway</a>. <b>Right-click the zip → Extract All</b>, then double-click <b>start.bat</b> in the extracted folder (not inside the zip).</li>
                 <li>When it asks, paste the <b>PC token</b> (create it below, after saving).</li>
                 <li>Scan the QR code that appears (on the PC and on this page) with WhatsApp on the clinic phone.</li>
               </ol>

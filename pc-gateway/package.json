@@ -1,6 +1,6 @@
 {
   "name": "hijraa-pc-gateway",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Runs on the clinic PC: links the clinic WhatsApp by QR and sends messages queued in HIJRAA WELLNESS.",
   "type": "module",

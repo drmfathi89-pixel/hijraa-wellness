@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout, argv } from 'node:process'
 
-const VERSION = '1.0.0'
+const VERSION = '1.0.1'
 const CONFIG = new URL('./config.json', import.meta.url)
 const SESSION_DIR = new URL('./whatsapp-session/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
 const MOCK = argv.includes('--mock') // test mode: pretends to be WhatsApp, sends nothing
