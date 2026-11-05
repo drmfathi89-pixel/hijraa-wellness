@@ -4,15 +4,17 @@ import { sql } from './db'
 // WhatsApp gateway: sends from the clinic's own WhatsApp number, linked by QR like WhatsApp Web.
 //  - waha:   WAHA (github.com/devlikeapro/waha), self-hosted; QR is shown inside this app.
 //  - fonnte: fonnte.com, hosted; the phone is linked on Fonnte's dashboard.
-export type Provider = 'none' | 'waha' | 'fonnte'
+//  - pc:     the clinic PC runs HIJRAA PC Gateway (pc-gateway/), which links WhatsApp by QR and
+//            polls /api/pc-gateway/sync to collect queued messages. Nothing needs to reach the PC.
+export type Provider = 'none' | 'waha' | 'fonnte' | 'pc'
 export type Gateway = { provider: Provider; url: string; key: string; session: string; autoReminders: boolean }
 export type GwStatus = { state: 'connected' | 'qr' | 'starting' | 'disconnected' | 'not_configured' | 'error'; me?: string; detail?: string }
 
 export async function getGateway(): Promise<Gateway> {
   const rows = await sql<{ key: string; value: string }[]>`select key, value from app_settings where key like 'gw_%'`
   const m = Object.fromEntries(rows.map((r) => [r.key.slice(3), r.value]))
-  const provider = (['waha', 'fonnte'].includes(m.provider) ? m.provider : 'none') as Provider
-  return { provider, url: (m.url ?? '').replace(/\/+$/, ''), key: m.key ?? '', session: m.session || 'default', autoReminders: m.auto === 'on' }
+  const provider = (['waha', 'fonnte', 'pc'].includes(m.provider) ? m.provider : 'none') as Provider
+  return { provider, url: (m.url ?? '').replace(/\/+$/, ''), key: provider === 'pc' ? (m.pc_token_hash ?? '') : (m.key ?? ''), session: m.session || 'default', autoReminders: m.auto === 'on' }
 }
 
 async function call(url: string, init: RequestInit & { timeoutMs?: number } = {}) {
@@ -29,6 +31,7 @@ const wahaHeaders = (g: Gateway) => ({ 'X-Api-Key': g.key, 'Content-Type': 'appl
 
 export async function gatewayStatus(g?: Gateway): Promise<GwStatus> {
   g ??= await getGateway()
+  if (g.provider === 'pc') return pcStatus()
   if (g.provider === 'none' || !g.key || (g.provider === 'waha' && !g.url)) return { state: 'not_configured' }
   try {
     if (g.provider === 'waha') {
@@ -77,6 +80,7 @@ export async function gatewaySend(g: Gateway, number: string, text: string): Pro
       const r = await call(`${g.url}/api/sendText`, { method: 'POST', headers: wahaHeaders(g), body: JSON.stringify({ session: g.session, chatId: `${number}@c.us`, text }) })
       return r.ok ? { ok: true } : { ok: false, error: `Gateway answered ${r.status}${r.text ? `: ${r.text.slice(0, 120)}` : ''}` }
     }
+    if (g.provider === 'pc') return { ok: false, error: 'PC gateway messages are queued with deliver()' }
     if (g.provider === 'fonnte') {
       const body = new URLSearchParams({ target: number, message: text })
       const r = await call('https://api.fonnte.com/send', { method: 'POST', headers: { Authorization: g.key }, body })
@@ -86,4 +90,45 @@ export async function gatewaySend(g: Gateway, number: string, text: string): Pro
   } catch (e) {
     return { ok: false, error: e instanceof Error && e.name === 'AbortError' ? 'Gateway did not respond' : 'Cannot reach the gateway' }
   }
+}
+
+// ---------- PC gateway ----------
+export type PcState = { state: 'qr' | 'connected' | 'starting'; qr?: string | null; me?: string; seenAt: string; version?: string }
+
+export async function pcStatus(): Promise<GwStatus & { qr?: string | null; seenAt?: string }> {
+  const [row] = await sql<{ value: string }[]>`select value from app_settings where key = 'gw_pc_status'`
+  const [tok] = await sql<{ value: string }[]>`select value from app_settings where key = 'gw_pc_token_hash'`
+  if (!tok) return { state: 'not_configured', detail: 'Create a PC token below, then start HIJRAA PC Gateway on the clinic PC.' }
+  if (!row) return { state: 'disconnected', detail: 'The PC gateway has not connected yet. Start it on the clinic PC.' }
+  const s = JSON.parse(row.value) as PcState
+  const ageSec = (Date.now() - new Date(s.seenAt).getTime()) / 1000
+  if (ageSec > 60) return { state: 'disconnected', detail: `PC offline (last seen ${Math.round(ageSec / 60)} min ago). Messages wait in the queue until it is back.`, seenAt: s.seenAt }
+  if (s.state === 'connected') return { state: 'connected', me: s.me, seenAt: s.seenAt }
+  if (s.state === 'qr') return { state: 'qr', qr: s.qr ?? null, detail: 'PC is online and waiting for the phone to be linked.', seenAt: s.seenAt }
+  return { state: 'starting', detail: 'PC gateway is starting WhatsApp…', seenAt: s.seenAt }
+}
+
+/**
+ * Deliver one message and log it. PC gateway: queued in wa_outbox for the PC to send (logged when the
+ * PC reports success). WAHA / Fonnte: sent now and logged.
+ */
+export async function deliver(g: Gateway, m: { number: string; message: string; patientId: string; appointmentId?: string | null; kind: 'reminder' | 'blast'; campaign?: string | null; sentBy?: string | null }): Promise<{ ok: boolean; queued?: boolean; error?: string }> {
+  if (g.provider === 'pc') {
+    if (m.appointmentId) {
+      const [dup] = await sql`select 1 from wa_outbox where appointment_id = ${m.appointmentId} and status in ('queued','sending')`
+      if (dup) return { ok: true, queued: true }
+    }
+    await sql`insert into wa_outbox (patient_id, appointment_id, kind, campaign, number, message, sent_by)
+      values (${m.patientId}, ${m.appointmentId ?? null}, ${m.kind}, ${m.campaign ?? null}, ${m.number}, ${m.message.slice(0, 4000)}, ${m.sentBy ?? null})`
+    return { ok: true, queued: true }
+  }
+  const r = await gatewaySend(g, m.number, m.message)
+  if (r.ok) await logSent(m)
+  return r
+}
+
+export async function logSent(m: { patientId: string; appointmentId?: string | null; kind: string; campaign?: string | null; message: string; sentBy?: string | null }) {
+  await sql`insert into message_logs (patient_id, appointment_id, kind, campaign, message, sent_by)
+    values (${m.patientId}, ${m.appointmentId ?? null}, ${m.kind}, ${m.campaign ?? null}, ${m.message.slice(0, 4000)}, ${m.sentBy ?? null})`
+  if (m.appointmentId) await sql`update appointments set reminder_sent_at = now() where id = ${m.appointmentId}`
 }

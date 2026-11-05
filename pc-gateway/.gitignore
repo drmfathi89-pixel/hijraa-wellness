@@ -1,0 +1,4 @@
+node_modules/
+config.json
+whatsapp-session/
+mock-sent.log

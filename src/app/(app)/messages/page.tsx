@@ -23,7 +23,8 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   const sp = await searchParams
   const tab = sp.tab === 'blast' || sp.tab === 'templates' || sp.tab === 'gateway' ? sp.tab : 'reminders'
   const gw = await getGateway()
-  const gateway = gw.provider !== 'none' && gw.key ? { delayMs: Number(process.env.WA_SEND_DELAY_MS) || 6000 } : undefined
+  const gateway = gw.provider === 'pc' ? (gw.key ? { delayMs: 0, queued: true } : undefined)
+    : gw.provider !== 'none' && gw.key ? { delayMs: Number(process.env.WA_SEND_DELAY_MS) || 6000 } : undefined
   const tpl = await getTemplates()
   const tabs = [['reminders', 'TCA reminders'], ['blast', 'Blast message'], ...(isAdmin(me) ? [['templates', 'Templates'], ['gateway', 'Gateway']] : [])]
 
@@ -54,14 +55,15 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   )
 }
 
-async function Reminders({ date, tpl, gateway }: { date: string; tpl: { reminder: string; clinic: string }; gateway?: { delayMs: number } }) {
-  const rows = await sql<{ id: string; patient_id: string; scheduled_at: Date; reason: string | null; reminder_sent_at: Date | null; name: string; phone: string | null }[]>`
-    select a.id, a.patient_id, a.scheduled_at, a.reason, a.reminder_sent_at, p.name, p.phone from appointments a join patients p on p.id = a.patient_id
+async function Reminders({ date, tpl, gateway }: { date: string; tpl: { reminder: string; clinic: string }; gateway?: { delayMs: number; queued?: boolean } }) {
+  const rows = await sql<{ id: string; patient_id: string; scheduled_at: Date; reason: string | null; reminder_sent_at: Date | null; name: string; phone: string | null; pending: boolean }[]>`
+    select a.id, a.patient_id, a.scheduled_at, a.reason, a.reminder_sent_at, p.name, p.phone,
+      exists (select 1 from wa_outbox o where o.appointment_id = a.id and o.status in ('queued','sending')) as pending from appointments a join patients p on p.id = a.patient_id
     where a.status = 'scheduled' and (a.scheduled_at at time zone ${TZ})::date = ${date}::date order by a.scheduled_at`
   const items: QueueItem[] = rows.map((r) => {
     const w = apptWhen(r.scheduled_at)
     return { key: r.id, patientId: r.patient_id, appointmentId: r.id, name: r.name, sub: `${w.time}${r.reason ? ` · ${r.reason}` : ''}${r.phone ? ` · ${r.phone}` : ''}`,
-      number: waNumber(r.phone), message: fill(tpl.reminder, { name: niceName(r.name), date: w.date, time: w.time, clinic: tpl.clinic }), sentAt: sentLabel(r.reminder_sent_at) }
+      number: waNumber(r.phone), message: fill(tpl.reminder, { name: niceName(r.name), date: w.date, time: w.time, clinic: tpl.clinic }), sentAt: sentLabel(r.reminder_sent_at), pending: r.pending }
   })
   const label = new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
   return (
@@ -79,7 +81,7 @@ async function Reminders({ date, tpl, gateway }: { date: string; tpl: { reminder
   )
 }
 
-async function Blast({ sp, tpl, gateway }: { sp: SP; tpl: { blast: string; clinic: string }; gateway?: { delayMs: number } }) {
+async function Blast({ sp, tpl, gateway }: { sp: SP; tpl: { blast: string; clinic: string }; gateway?: { delayMs: number; queued?: boolean } }) {
   const gender = sp.gender === 'Male' || sp.gender === 'Female' ? sp.gender : ''
   const amin = Number(sp.amin) || null, amax = Number(sp.amax) || null
   const dx = (sp.dx ?? '').trim().toLowerCase(), seen = Number(sp.seen) || 0
@@ -99,8 +101,9 @@ async function Blast({ sp, tpl, gateway }: { sp: SP; tpl: { blast: string; clini
     order by p.name limit 1000`
   const sent = ready ? await sql<{ patient_id: string; at: Date }[]>`select patient_id, max(created_at) as at from message_logs where campaign = ${campaign} group by patient_id` : []
   const sentMap = new Map(sent.map((s) => [s.patient_id, s.at]))
+  const pending = ready ? new Set((await sql<{ patient_id: string }[]>`select distinct patient_id from wa_outbox where campaign = ${campaign} and status in ('queued','sending')`).map((r) => r.patient_id)) : new Set<string>()
   const items: QueueItem[] = recipients.map((r) => ({ key: r.id, patientId: r.id, name: r.name, sub: r.phone ?? '', number: waNumber(r.phone),
-    message: fill(msg, { name: niceName(r.name), clinic: tpl.clinic }), sentAt: sentLabel(sentMap.get(r.id) ?? null) }))
+    message: fill(msg, { name: niceName(r.name), clinic: tpl.clinic }), sentAt: sentLabel(sentMap.get(r.id) ?? null), pending: pending.has(r.id) }))
 
   return (
     <div className="space-y-3">

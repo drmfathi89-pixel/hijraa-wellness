@@ -15,3 +15,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **Database:** Neon Postgres (project `patient-shape-07791828`, region ap-southeast-1). `DATABASE_URL` is set in Vercel's environment variables. Never commit connection strings or write them into files.
 - **Schema changes** go in `db/schema.sql` and must stay idempotent. The build applies the file before `next build`, and fails on Vercel if the database is unreachable.
 - `vercel.json` pins the framework to Next.js (the Vercel project was imported from an empty repo, so it was not auto-detected) and runs functions in Singapore (`sin1`), next to the database.
+- `pc-gateway/` is the WhatsApp gateway program for the clinic PC; the build zips it to `public/downloads/hijraa-pc-gateway.zip`. Bump its `VERSION` when changing it.

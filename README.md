@@ -40,6 +40,7 @@ npm run dev
 
 ## WhatsApp gateway (automatic sending)
 Without a gateway, WhatsApp messages open in the WhatsApp app for you to press send. To send automatically from the clinic's own number:
+- **This PC** (recommended, free): the clinic PC runs **HIJRAA PC Gateway** (`pc-gateway/`, downloadable in the app as a zip). It links WhatsApp by QR, then polls `/api/pc-gateway/sync` with a PC token, so nothing on the internet has to reach the PC. Messages queue in `wa_outbox` while the PC is off. Test without WhatsApp: `node index.mjs --mock --url http://localhost:3000 --token <token>`.
 - **WAHA** (free, self-hosted): run the `devlikeapro/waha` Docker image on an always-on host with `WAHA_API_KEY` set. In the app, go to **WhatsApp → Gateway**, choose WAHA, enter its address and API key, then **Connect phone** and scan the QR code (WhatsApp → Linked devices).
 - **Fonnte** (hosted): link the phone on fonnte.com, then paste the device token under **WhatsApp → Gateway**.
 

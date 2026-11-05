@@ -155,3 +155,22 @@ create table if not exists message_logs (
 );
 create index if not exists message_logs_campaign_idx on message_logs (campaign, patient_id);
 create index if not exists message_logs_patient_idx on message_logs (patient_id, created_at desc);
+
+-- v8: PC gateway outbox (the clinic PC collects and sends these)
+create table if not exists wa_outbox (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid references patients(id) on delete cascade,
+  appointment_id uuid references appointments(id) on delete set null,
+  kind text not null,
+  campaign text,
+  number text not null,
+  message text not null,
+  status text not null default 'queued' check (status in ('queued','sending','sent','failed')),
+  error text,
+  attempts int not null default 0,
+  sent_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  claimed_at timestamptz,
+  sent_at timestamptz
+);
+create index if not exists wa_outbox_status_idx on wa_outbox (status, created_at);
