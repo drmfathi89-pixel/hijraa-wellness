@@ -8,6 +8,8 @@ import { waNumber, niceName, fill, apptWhen } from '@/lib/whatsapp'
 import { PageHeader, Empty, Field } from '@/components/ui'
 import SendQueue, { type QueueItem } from '@/components/SendQueue'
 import MiniForm from '@/components/MiniForm'
+import GatewaySetup from '@/components/GatewaySetup'
+import { getGateway } from '@/lib/wagateway'
 
 export const metadata = { title: 'WhatsApp' }
 
@@ -19,9 +21,11 @@ const sentLabel = (d: Date | null) => (d ? fmtDateTime(d) : null)
 export default async function Messages({ searchParams }: { searchParams: Promise<SP> }) {
   const me = await requireUser()
   const sp = await searchParams
-  const tab = sp.tab === 'blast' || sp.tab === 'templates' ? sp.tab : 'reminders'
+  const tab = sp.tab === 'blast' || sp.tab === 'templates' || sp.tab === 'gateway' ? sp.tab : 'reminders'
+  const gw = await getGateway()
+  const gateway = gw.provider !== 'none' && gw.key ? { delayMs: Number(process.env.WA_SEND_DELAY_MS) || 6000 } : undefined
   const tpl = await getTemplates()
-  const tabs = [['reminders', 'TCA reminders'], ['blast', 'Blast message'], ...(isAdmin(me) ? [['templates', 'Templates']] : [])]
+  const tabs = [['reminders', 'TCA reminders'], ['blast', 'Blast message'], ...(isAdmin(me) ? [['templates', 'Templates'], ['gateway', 'Gateway']] : [])]
 
   return (
     <>
@@ -31,8 +35,11 @@ export default async function Messages({ searchParams }: { searchParams: Promise
           <Link key={k} href={`/messages?tab=${k}`} className={`flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold ${tab === k ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{l}</Link>
         ))}
       </div>
-      {tab === 'reminders' && <Reminders date={sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d) ? sp.d : addDays(todayLocal(), 1)} tpl={tpl} />}
-      {tab === 'blast' && <Blast sp={sp} tpl={tpl} />}
+      {tab === 'reminders' && <Reminders date={sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d) ? sp.d : addDays(todayLocal(), 1)} tpl={tpl} gateway={gateway} />}
+      {tab === 'blast' && <Blast sp={sp} tpl={tpl} gateway={gateway} />}
+      {tab === 'gateway' && isAdmin(me) && (
+        <GatewaySetup initial={{ provider: gw.provider, url: gw.url, session: gw.session, hasKey: !!gw.key, autoReminders: gw.autoReminders, cronReady: !!process.env.CRON_SECRET }} />
+      )}
       {tab === 'templates' && isAdmin(me) && (
         <section className="card card-pad">
           <p className="mb-3 text-sm text-slate-600">Placeholders: <code>{'{name}'}</code> patient name, <code>{'{date}'}</code> and <code>{'{time}'}</code> appointment, <code>{'{clinic}'}</code> clinic name.</p>
@@ -47,7 +54,7 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   )
 }
 
-async function Reminders({ date, tpl }: { date: string; tpl: { reminder: string; clinic: string } }) {
+async function Reminders({ date, tpl, gateway }: { date: string; tpl: { reminder: string; clinic: string }; gateway?: { delayMs: number } }) {
   const rows = await sql<{ id: string; patient_id: string; scheduled_at: Date; reason: string | null; reminder_sent_at: Date | null; name: string; phone: string | null }[]>`
     select a.id, a.patient_id, a.scheduled_at, a.reason, a.reminder_sent_at, p.name, p.phone from appointments a join patients p on p.id = a.patient_id
     where a.status = 'scheduled' and (a.scheduled_at at time zone ${TZ})::date = ${date}::date order by a.scheduled_at`
@@ -67,12 +74,12 @@ async function Reminders({ date, tpl }: { date: string; tpl: { reminder: string;
         <Link className="btn-ghost" href={`/messages?tab=reminders&d=${todayLocal()}`}>Today</Link>
       </form>
       <h2 className="h-section">{label}: {rows.length} appointment{rows.length === 1 ? '' : 's'}</h2>
-      {rows.length === 0 ? <Empty title="No scheduled appointments on this day" /> : <SendQueue items={items} kind="reminder" />}
+      {rows.length === 0 ? <Empty title="No scheduled appointments on this day" /> : <SendQueue items={items} kind="reminder" gateway={gateway} />}
     </div>
   )
 }
 
-async function Blast({ sp, tpl }: { sp: SP; tpl: { blast: string; clinic: string } }) {
+async function Blast({ sp, tpl, gateway }: { sp: SP; tpl: { blast: string; clinic: string }; gateway?: { delayMs: number } }) {
   const gender = sp.gender === 'Male' || sp.gender === 'Female' ? sp.gender : ''
   const amin = Number(sp.amin) || null, amax = Number(sp.amax) || null
   const dx = (sp.dx ?? '').trim().toLowerCase(), seen = Number(sp.seen) || 0
@@ -114,7 +121,7 @@ async function Blast({ sp, tpl }: { sp: SP; tpl: { blast: string; clinic: string
       {!ready ? null : recipients.length === 0 ? <Empty title="No patients match these filters" /> : (
         <>
           <h2 className="h-section">{recipients.length} recipient{recipients.length === 1 ? '' : 's'} · campaign “{campaign}”</h2>
-          <SendQueue items={items} kind="blast" campaign={campaign} />
+          <SendQueue items={items} kind="blast" campaign={campaign} gateway={gateway} />
         </>
       )}
     </div>

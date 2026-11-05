@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { sessionKey } from '@/lib/session-key'
 
-const PUBLIC = ['/login', '/setup', '/manifest.webmanifest', '/sw.js', '/offline']
+const PUBLIC = ['/login', '/setup', '/manifest.webmanifest', '/sw.js', '/offline', '/api/cron'] // /api/cron checks CRON_SECRET itself
 
 // Fast first gate (signature + expiry). Every page, route handler and server action
 // also calls getUser()/requireUser(), which checks the account is still active.

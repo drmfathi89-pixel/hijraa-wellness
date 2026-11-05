@@ -37,3 +37,10 @@ npm run dev
 - Patient data is never cached by the service worker. Only static assets are cached.
 - Times are shown in Malaysia time (Asia/Kuala_Lumpur).
 - `vercel.json` runs the app's functions in Singapore (`sin1`), next to the Neon database (`ap-southeast-1`), so each query is a short round trip.
+
+## WhatsApp gateway (automatic sending)
+Without a gateway, WhatsApp messages open in the WhatsApp app for you to press send. To send automatically from the clinic's own number:
+- **WAHA** (free, self-hosted): run the `devlikeapro/waha` Docker image on an always-on host with `WAHA_API_KEY` set. In the app, go to **WhatsApp → Gateway**, choose WAHA, enter its address and API key, then **Connect phone** and scan the QR code (WhatsApp → Linked devices).
+- **Fonnte** (hosted): link the phone on fonnte.com, then paste the device token under **WhatsApp → Gateway**.
+
+Automatic evening TCA reminders run daily at 12:00 UTC (8 pm Malaysia) via `vercel.json` crons. They need a `CRON_SECRET` environment variable in Vercel, plus the "Send TCA reminders automatically" option ticked.
