@@ -139,3 +139,19 @@ alter table users add column if not exists roles text[];
 update users set roles = array[role] where roles is null;
 alter table users alter column roles set default '{doctor}';
 alter table users alter column roles set not null;
+
+-- v7: WhatsApp customer service (reminders, blasts) and editable templates
+create table if not exists app_settings (key text primary key, value text not null);
+alter table appointments add column if not exists reminder_sent_at timestamptz;
+create table if not exists message_logs (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid references patients(id) on delete cascade,
+  appointment_id uuid references appointments(id) on delete set null,
+  kind text not null check (kind in ('reminder','blast','single')),
+  campaign text,
+  message text not null,
+  sent_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists message_logs_campaign_idx on message_logs (campaign, patient_id);
+create index if not exists message_logs_patient_idx on message_logs (patient_id, created_at desc);

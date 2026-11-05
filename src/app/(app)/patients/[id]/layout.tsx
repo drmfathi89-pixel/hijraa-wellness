@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ChevronLeft, Phone, Stethoscope } from 'lucide-react'
+import { ChevronLeft, Phone, Stethoscope, MessageCircle } from 'lucide-react'
+import { waNumber } from '@/lib/whatsapp'
 import { getPatient } from '@/lib/queries'
 import { calcAge, fmtDate } from '@/lib/utils'
 import { Avatar } from '@/components/PatientRow'
@@ -25,6 +26,7 @@ export default async function PatientLayout({ children, params }: { children: Re
             <span>{p.gender ?? '-'}</span>
             <span>{calcAge(p.dob)}{p.dob ? ` (${fmtDate(p.dob)})` : ''}</span>
             {p.phone && <a href={`tel:${p.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1 text-brand-700"><Phone size={13} />{p.phone}</a>}
+            {waNumber(p.phone) && <a href={`https://wa.me/${waNumber(p.phone)}`} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-medium text-[#128c4a]"><MessageCircle size={13} />WhatsApp</a>}
           </div>
         </div>
         <form action={startEncounter.bind(null, p.id)} className="w-full sm:w-auto">

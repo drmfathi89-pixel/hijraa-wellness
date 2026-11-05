@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, CalendarDays, FileSpreadsheet, Settings, UserPlus, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, CalendarDays, FileSpreadsheet, Settings, UserPlus, LogOut, BarChart3, MessageCircle } from 'lucide-react'
 import { Logo } from './Logo'
 import { logout } from '@/app/actions/auth'
 import { rolesText } from '@/lib/utils'
@@ -10,6 +10,8 @@ const items = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/patients', label: 'Patients', icon: Users },
   { href: '/appointments', label: 'Appointments', icon: CalendarDays },
+  { href: '/messages', label: 'WhatsApp', icon: MessageCircle },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3, clinical: true },
   { href: '/import', label: 'Import Excel', icon: FileSpreadsheet },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -26,7 +28,7 @@ export function Sidebar({ user }: { user: { name: string; roles: string[] } }) {
       <Link href="/" className="px-2"><Logo className="h-20 w-auto" /></Link>
       <Link href="/patients/new" className="btn-primary mt-6"><UserPlus size={16} /> New patient</Link>
       <nav className="mt-6 flex-1 space-y-1">
-        {items.map(({ href, label, icon: Icon }) => (
+        {items.filter((i) => !('clinical' in i) || user.roles.some((r) => r === 'admin' || r === 'doctor')).map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${isActive(path, href) ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}>
             <Icon size={18} /> {label}
           </Link>

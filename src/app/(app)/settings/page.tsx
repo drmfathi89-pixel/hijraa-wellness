@@ -1,4 +1,5 @@
-import { LogOut } from 'lucide-react'
+import Link from 'next/link'
+import { LogOut, MessageCircle, BarChart3, FileSpreadsheet } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { requireUser, isAdmin } from '@/lib/auth'
 import { rolesText } from '@/lib/utils'
@@ -22,6 +23,17 @@ export default async function Settings() {
   return (
     <>
       <PageHeader title="Settings" />
+      <div className="mb-4 grid grid-cols-3 gap-2 lg:hidden">
+        {[
+          { href: '/messages', label: 'WhatsApp', icon: MessageCircle, show: true },
+          { href: '/analytics', label: 'Analytics', icon: BarChart3, show: me.roles.some((r) => r === 'admin' || r === 'doctor') },
+          { href: '/import', label: 'Import Excel', icon: FileSpreadsheet, show: true },
+        ].filter((x) => x.show).map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href} className="card flex flex-col items-center gap-1.5 p-3 text-xs font-semibold text-slate-700">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700"><Icon size={20} /></span>{label}
+          </Link>
+        ))}
+      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card card-pad">
           <h2 className="h-section mb-1">My account</h2>
