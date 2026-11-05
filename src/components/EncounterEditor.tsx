@@ -200,6 +200,7 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
           <div><label className="label">Date &amp; time</label><input type="datetime-local" className="input" value={d.followup.at} onChange={(e) => set('followup', { ...d.followup, at: e.target.value })} /></div>
           <div><label className="label">Reason</label><input className="input" value={d.followup.reason} placeholder="e.g. Review blood results" onChange={(e) => set('followup', { ...d.followup, reason: e.target.value })} /></div>
         </div>
+        <p className="mt-2 text-xs text-slate-500">Saved to the appointment calendar when you tap Save draft or Complete.</p>
         {d.followup.at && <button type="button" className="mt-2 text-xs font-semibold text-red-600" onClick={() => set('followup', { at: '', reason: '' })}>Remove follow-up</button>}
       </Section>
 
