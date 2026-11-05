@@ -1,13 +1,14 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Save, CheckCircle2, Activity, FlaskConical, ClipboardList, Pill, CalendarPlus, NotebookPen } from 'lucide-react'
+import { Plus, Trash2, Save, CheckCircle2, Activity, FlaskConical, ClipboardList, Pill, CalendarPlus, NotebookPen, Stethoscope, Receipt, History } from 'lucide-react'
 import { saveEncounter } from '@/app/actions/encounters'
-import type { EncounterPayload, TreatmentRow } from '@/lib/types'
+import { type EncounterPayload, type TreatmentRow, type ChargeRow, chargesTotal, rm } from '@/lib/types'
 import { bmi, vitalFlag, type Flag } from '@/lib/utils'
 
 const VISIT_TYPES = ['Consultation', 'Follow-up', 'Walk-in', 'Emergency', 'Telemedicine', 'Procedure', 'Health screening']
 const KINDS = ['Medication', 'Procedure', 'Therapy', 'Injection', 'Dressing', 'Referral', 'Other']
+const CHARGE_ITEMS = ['Consultation', 'Medication', 'Procedure', 'Injection', 'Laboratory test', 'Dressing', 'Medical certificate']
 const FREQ = ['OD', 'BD', 'TDS', 'QID', 'ON', 'PRN', 'STAT', 'Q4H', 'Q6H', 'Q8H']
 
 function Section({ icon: Icon, title, children, right }: { icon: React.ElementType; title: string; children: React.ReactNode; right?: React.ReactNode }) {
@@ -30,11 +31,14 @@ function FlagTag({ f }: { f: Flag }) {
   return <span className={`ml-1 rounded px-1 text-[10px] font-bold ${f === 'high' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{f === 'high' ? 'H' : 'L'}</span>
 }
 
-export default function EncounterEditor({ id, patientId, initial }: { id: string; patientId: string; initial: EncounterPayload }) {
+export type PrevDx = { date: string; text: string; source: string }
+
+export default function EncounterEditor({ id, patientId, initial, previousDx = [] }: { id: string; patientId: string; initial: EncounterPayload; previousDx?: PrevDx[] }) {
   const router = useRouter()
   const [d, setD] = useState<EncounterPayload>(initial)
   const [pending, start] = useTransition()
   const [msg, setMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
+  const [showPrev, setShowPrev] = useState(false)
 
   const set = <K extends keyof EncounterPayload>(k: K, v: EncounterPayload[K]) => setD((s) => ({ ...s, [k]: v }))
   const setV = (k: keyof EncounterPayload['vitals'], v: string) => setD((s) => ({ ...s, vitals: { ...s.vitals, [k]: v } }))
@@ -46,6 +50,12 @@ export default function EncounterEditor({ id, patientId, initial }: { id: string
   function delRow(key: 'treatments', i: number) {
     setD((s) => ({ ...s, [key]: s[key].filter((_, j) => j !== i) }))
   }
+  const setDx = (i: number, v: string) => setD((s) => ({ ...s, diagnosis_list: s.diagnosis_list.map((x, j) => (j === i ? v : x)) }))
+  const addDx = (v = '') => setD((s) => ({ ...s, diagnosis_list: s.diagnosis_list.length === 1 && !s.diagnosis_list[0] && v ? [v] : [...s.diagnosis_list, v] }))
+  const delDx = (i: number) => setD((s) => ({ ...s, diagnosis_list: s.diagnosis_list.length > 1 ? s.diagnosis_list.filter((_, j) => j !== i) : [''] }))
+  const setCh = (i: number, p: Partial<ChargeRow>) => setD((s) => ({ ...s, charges: s.charges.map((c, j) => (j === i ? { ...c, ...p } : c)) }))
+  const addCh = (item = '') => setD((s) => ({ ...s, charges: [...s.charges, { item, qty: '1', price: '' }] }))
+  const delCh = (i: number) => setD((s) => ({ ...s, charges: s.charges.filter((_, j) => j !== i) }))
 
   function submit(close: boolean) {
     setMsg(null)
@@ -85,15 +95,6 @@ export default function EncounterEditor({ id, patientId, initial }: { id: string
         </div>
       </div>
 
-      <Section icon={NotebookPen} title="Patient notes">
-        <div className="grid gap-3">
-          <div><label className="label">Chief complaint</label><input className="input" value={d.chief_complaint} onChange={(e) => set('chief_complaint', e.target.value)} placeholder="e.g. Fever and cough x 3 days" /></div>
-          <div><label className="label">History of presenting illness</label><textarea className="input" rows={4} value={d.history} onChange={(e) => set('history', e.target.value)} /></div>
-          <div><label className="label">Physical examination</label><textarea className="input" rows={4} value={d.examination} onChange={(e) => set('examination', e.target.value)} /></div>
-          <div><label className="label">Additional notes</label><textarea className="input" rows={3} value={d.notes} onChange={(e) => set('notes', e.target.value)} /></div>
-        </div>
-      </Section>
-
       <Section icon={Activity} title="Vital signs">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="col-span-2">
@@ -117,15 +118,66 @@ export default function EncounterEditor({ id, patientId, initial }: { id: string
         </div>
       </Section>
 
-      <Section icon={FlaskConical} title="Investigations">
-        <textarea className="input min-h-[140px]" rows={6} value={d.investigation_notes} onChange={(e) => set('investigation_notes', e.target.value)}
-          placeholder="Write investigations ordered and results here" />
-      </Section>
-
-      <Section icon={ClipboardList} title="Diagnosis">
-        <textarea className="input min-h-[120px]" rows={5} value={d.diagnosis_notes} onChange={(e) => set('diagnosis_notes', e.target.value)}
-          placeholder="Write the diagnosis here" />
-      </Section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Section icon={NotebookPen} title="Presenting Symptoms & Complaints">
+            <label className="label">Symptoms details</label>
+            <textarea className="input min-h-[220px]" rows={9} value={d.history} onChange={(e) => set('history', e.target.value)}
+              placeholder={'e.g. feverish today\nhistory of sick contact\nURTI symptoms'} />
+          </Section>
+          <Section icon={Stethoscope} title="Physical & Mental Health Examination">
+            <label className="label">On examination</label>
+            <textarea className="input min-h-[220px]" rows={9} value={d.examination} onChange={(e) => set('examination', e.target.value)}
+              placeholder={'e.g. alert, not tachypnoeic\nlungs: clear'} />
+          </Section>
+        </div>
+        <div className="space-y-4">
+          <Section icon={FlaskConical} title="Laboratory & Imaging">
+            <label className="label">Laboratory</label>
+            <textarea className="input mb-3 min-h-[110px]" rows={4} value={d.investigation_notes} onChange={(e) => set('investigation_notes', e.target.value)} />
+            <label className="label">Imaging findings</label>
+            <textarea className="input min-h-[110px]" rows={4} value={d.imaging_notes} onChange={(e) => set('imaging_notes', e.target.value)} />
+          </Section>
+          <Section icon={ClipboardList} title="Diagnosis">
+            {previousDx.length > 0 && (
+              <div className="mb-3">
+                <button type="button" className="btn-sm btn bg-leaf/40 text-leaf-dark hover:bg-leaf/60" onClick={() => setShowPrev(!showPrev)}>
+                  <History size={14} /> {showPrev ? 'Hide' : 'See'} previous diagnosis
+                </button>
+                {showPrev && (
+                  <ul className="mt-2 max-h-48 space-y-1 overflow-auto rounded-xl bg-slate-50 p-2 text-sm">
+                    {previousDx.map((p, i) => (
+                      <li key={i} className="flex items-start justify-between gap-2">
+                        <span><span className="text-xs text-slate-400">{p.date} · {p.source}</span><span className="block text-slate-800">{p.text}</span></span>
+                        <button type="button" className="text-xs font-semibold text-brand-700" onClick={() => addDx(p.text)}>Use</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            <label className="mb-3 flex items-center gap-2 text-sm font-medium text-heart">
+              <input type="checkbox" checked={d.diagnosis_sensitive} onChange={(e) => set('diagnosis_sensitive', e.target.checked)} />
+              Sensitive diagnosis <span className="text-xs font-normal text-slate-400">(hidden from lists; visible only inside the encounter)</span>
+            </label>
+            <label className="label">Description <span className="text-heart">*</span></label>
+            <div className="space-y-2">
+              {d.diagnosis_list.map((x, i) => (
+                <div key={i} className="flex gap-2">
+                  <input className="input" value={x} onChange={(e) => setDx(i, e.target.value)} placeholder="e.g. URTI" aria-label={`Diagnosis ${i + 1}`} />
+                  {i === d.diagnosis_list.length - 1
+                    ? <button type="button" className="btn-primary px-3" onClick={() => addDx()} aria-label="Add diagnosis"><Plus size={16} /></button>
+                    : <button type="button" className="btn-ghost px-3 text-red-500" onClick={() => delDx(i)} aria-label="Remove diagnosis"><Trash2 size={16} /></button>}
+                </div>
+              ))}
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={d.diagnosis_notifiable} onChange={(e) => set('diagnosis_notifiable', e.target.checked)} />
+              To be notified to Ministry of Health
+            </label>
+          </Section>
+        </div>
+      </div>
 
       <Section icon={Pill} title="Management: plan & treatment" right={<button type="button" className="btn-secondary btn-sm" onClick={() => set('treatments', [...d.treatments, { kind: 'Medication', name: '', dose: '', frequency: '', duration: '', instructions: '' }])}><Plus size={14} /> Treatment</button>}>
         <div className="mb-4"><label className="label">Patient plan</label><textarea className="input" rows={4} value={d.plan} onChange={(e) => set('plan', e.target.value)} placeholder="Management plan, advice, referrals…" /></div>
@@ -147,6 +199,37 @@ export default function EncounterEditor({ id, patientId, initial }: { id: string
           ))}
           <datalist id="freq">{FREQ.map((f) => <option key={f} value={f} />)}</datalist>
         </div>
+      </Section>
+
+      <Section icon={Receipt} title="Charges" right={<button type="button" className="btn-secondary btn-sm" onClick={() => addCh()}><Plus size={14} /> Item</button>}>
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {CHARGE_ITEMS.map((c) => (
+            <button key={c} type="button" className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:bg-brand-50" onClick={() => addCh(c)}>+ {c}</button>
+          ))}
+          {d.treatments.some((t) => t.name.trim()) && (
+            <button type="button" className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"
+              onClick={() => setD((s) => ({ ...s, charges: [...s.charges, ...s.treatments.filter((t) => t.name.trim() && !s.charges.some((c) => c.item === t.name.trim())).map((t) => ({ item: t.name.trim(), qty: '1', price: '' }))] }))}>
+              + Add treatments
+            </button>
+          )}
+        </div>
+        {d.charges.length === 0 ? <p className="text-sm text-slate-400">No chargeable items.</p> : (
+          <div className="space-y-2">
+            <div className="hidden grid-cols-12 gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:grid">
+              <span className="col-span-6">Item</span><span className="col-span-2">Qty</span><span className="col-span-2">Price (RM)</span><span className="col-span-2 text-right">Amount</span>
+            </div>
+            {d.charges.map((c, i) => (
+              <div key={i} className="grid grid-cols-12 items-center gap-2 rounded-xl bg-slate-50 p-2">
+                <input className="input col-span-12 sm:col-span-6" placeholder="Item" value={c.item} onChange={(e) => setCh(i, { item: e.target.value })} />
+                <input className="input col-span-3 sm:col-span-2" type="number" inputMode="numeric" min="1" placeholder="Qty" value={c.qty} onChange={(e) => setCh(i, { qty: e.target.value })} />
+                <input className="input col-span-4 sm:col-span-2" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={c.price} onChange={(e) => setCh(i, { price: e.target.value })} />
+                <span className="col-span-3 text-right text-sm font-semibold sm:col-span-1">{rm((Number(c.qty) || 0) * (Number(c.price) || 0)).replace('RM ', '')}</span>
+                <button type="button" className="btn-ghost col-span-2 p-2 text-red-500 sm:col-span-1" onClick={() => delCh(i)} aria-label="Remove"><Trash2 size={16} /></button>
+              </div>
+            ))}
+            <div className="flex justify-end px-2 pt-1 text-base font-extrabold text-slate-900">Total: {rm(chargesTotal(d.charges))}</div>
+          </div>
+        )}
       </Section>
 
       <Section icon={CalendarPlus} title="Follow-up appointment">

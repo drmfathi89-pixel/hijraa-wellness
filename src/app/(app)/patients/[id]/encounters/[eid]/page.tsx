@@ -2,14 +2,14 @@ import { notFound } from 'next/navigation'
 import { Pencil, Trash2 } from 'lucide-react'
 import { sql } from '@/lib/db'
 import { getEncounter, type Treatment, type Appointment } from '@/lib/queries'
-import { fmtDateTime, toLocalInput } from '@/lib/utils'
+import { fmtDate, fmtDateTime, toLocalInput } from '@/lib/utils'
 import { reopenEncounter, deleteEncounter } from '@/app/actions/encounters'
 import EncounterEditor from '@/components/EncounterEditor'
 import EncounterSummary from '@/components/EncounterSummary'
 import ConfirmButton from '@/components/ConfirmButton'
 import PrintButton from '@/components/PrintButton'
 import { StatusBadge } from '@/components/ui'
-import { type EncounterPayload, investigationText, diagnosisText } from '@/lib/types'
+import { type EncounterPayload, type Encounter, investigationText, diagnosisText } from '@/lib/types'
 import { requireUser } from '@/lib/auth'
 
 const s = (v: unknown) => (v == null ? '' : String(v))
@@ -49,6 +49,15 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
     )
   }
 
+  const [prevEnc, prevPast] = await Promise.all([
+    sql<Encounter[]>`select * from encounters where patient_id = ${id} and id <> ${eid} order by encounter_at desc limit 30`,
+    sql<{ visit_date: string | null; diagnosis: string; facility: string | null }[]>`select visit_date, diagnosis, facility from past_records where patient_id = ${id} and diagnosis is not null order by visit_date desc nulls last limit 30`,
+  ])
+  const previousDx = [
+    ...prevEnc.flatMap((p) => diagnosisText(p).split('\n').filter((x) => x.trim()).map((text) => ({ date: fmtDate(p.encounter_at), text: text.trim(), source: 'HIJRAA' }))),
+    ...prevPast.map((p) => ({ date: fmtDate(p.visit_date), text: p.diagnosis, source: p.facility || 'Past record' })),
+  ]
+
   const initial: EncounterPayload = {
     encounter_at: toLocalInput(e.encounter_at),
     visit_type: e.visit_type,
@@ -57,14 +66,18 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
       bp_systolic: s(e.bp_systolic), bp_diastolic: s(e.bp_diastolic), pulse: s(e.pulse), resp_rate: s(e.resp_rate),
       temperature: s(e.temperature), spo2: s(e.spo2), weight: s(e.weight), height: s(e.height), glucose: s(e.glucose), pain_score: s(e.pain_score),
     },
-    investigation_notes: investigationText(e), diagnosis_notes: diagnosisText(e), plan: s(e.plan),
+    investigation_notes: investigationText(e), imaging_notes: s(e.imaging_notes),
+    diagnosis_list: diagnosisText(e).split('\n').map((x) => x.trim()).filter(Boolean).concat(diagnosisText(e).trim() ? [] : ['']),
+    diagnosis_sensitive: e.diagnosis_sensitive, diagnosis_notifiable: e.diagnosis_notifiable,
+    charges: (e.charges ?? []).map((c) => ({ item: c.item, qty: String(c.qty), price: c.price ? c.price.toFixed(2) : '' })),
+    plan: s(e.plan),
     treatments: treatments.map((t) => ({ id: t.id, kind: t.kind, name: t.name, dose: s(t.dose), frequency: s(t.frequency), duration: s(t.duration), instructions: s(t.instructions) })),
     followup: followup ? { at: toLocalInput(followup.scheduled_at), reason: s(followup.reason) } : { at: '', reason: '' },
   }
   return (
     <>
       {header}
-      <EncounterEditor id={eid} patientId={id} initial={initial} />
+      <EncounterEditor id={eid} patientId={id} initial={initial} previousDx={previousDx} />
     </>
   )
 }

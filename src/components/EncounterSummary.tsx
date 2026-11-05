@@ -1,5 +1,5 @@
 import { fmtDateTime, bmi, vitalFlag } from '@/lib/utils'
-import { type Encounter, investigationText, diagnosisText } from '@/lib/types'
+import { type Encounter, investigationText, diagnosisText, chargesTotal, rm } from '@/lib/types'
 import type { Treatment, Appointment } from '@/lib/queries'
 
 
@@ -49,14 +49,24 @@ export default function EncounterSummary({ e, treatments, followup }: { e: Encou
   return (
     <div className="space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">
-        <Block title="Chief complaint"><Text v={e.chief_complaint} /></Block>
-        <Block title="History"><Text v={e.history} /></Block>
-        <Block title="Examination"><Text v={e.examination} /></Block>
+        <Block title="Presenting symptoms & complaints"><Text v={e.history || e.chief_complaint} /></Block>
+        <Block title="On examination"><Text v={e.examination} /></Block>
         {e.notes && <Block title="Notes"><Text v={e.notes} /></Block>}
       </div>
       <Block title="Vital signs"><VitalsGrid e={e} /></Block>
-      <Block title="Investigations"><Text v={investigationText(e) || null} /></Block>
-      <Block title="Diagnosis"><Text v={diagnosisText(e) || null} /></Block>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Block title="Laboratory"><Text v={investigationText(e) || null} /></Block>
+        <Block title="Imaging findings"><Text v={e.imaging_notes} /></Block>
+      </div>
+      <Block title="Diagnosis">
+        {(e.diagnosis_sensitive || e.diagnosis_notifiable) && (
+          <div className="mb-1.5 flex flex-wrap gap-1.5">
+            {e.diagnosis_sensitive && <span className="badge bg-heart/10 text-heart-dark">Sensitive diagnosis</span>}
+            {e.diagnosis_notifiable && <span className="badge bg-amber-100 text-amber-800">Notify Ministry of Health</span>}
+          </div>
+        )}
+        <Text v={diagnosisText(e) || null} />
+      </Block>
       <Block title="Plan"><Text v={e.plan} /></Block>
       <Block title="Treatment">
         {treatments.length === 0 ? <p className="text-sm text-slate-400">-</p> : (
@@ -71,6 +81,20 @@ export default function EncounterSummary({ e, treatments, followup }: { e: Encou
           </ul>
         )}
       </Block>
+      {e.charges?.length > 0 && (
+        <Block title="Charges">
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-slate-100">
+                {e.charges.map((c, k) => (
+                  <tr key={k}><td className="px-3 py-2">{c.item}</td><td className="px-3 py-2 text-slate-500">{c.qty} × {rm(c.price)}</td><td className="px-3 py-2 text-right font-semibold">{rm(c.qty * c.price)}</td></tr>
+                ))}
+                <tr className="bg-slate-50"><td className="px-3 py-2 font-bold" colSpan={2}>Total</td><td className="px-3 py-2 text-right font-extrabold">{rm(chargesTotal(e.charges))}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </Block>
+      )}
       {followup && <Block title="Follow-up"><p className="text-[15px]">{fmtDateTime(followup.scheduled_at)} {followup.reason && <span className="text-slate-500">· {followup.reason}</span>}</p></Block>}
       <p className="text-xs text-slate-400">Last updated {fmtDateTime(e.updated_at)}{e.doctor_name ? ` · ${e.doctor_name}` : ''}</p>
     </div>

@@ -116,3 +116,9 @@ alter table users add column if not exists username text;
 alter table users alter column email drop not null;
 update users set username = lower(email) where username is null and email is not null;
 create unique index if not exists users_username_idx on users (lower(username));
+
+-- v4: encounter layout (imaging findings, diagnosis flags) and chargeable items
+alter table encounters add column if not exists imaging_notes text;
+alter table encounters add column if not exists diagnosis_sensitive boolean not null default false;
+alter table encounters add column if not exists diagnosis_notifiable boolean not null default false;
+alter table encounters add column if not exists charges jsonb not null default '[]';

@@ -15,7 +15,7 @@ export default async function Management({ params }: { params: Promise<{ id: str
   await requireUser()
   const { id } = await params
   const [plans, treatments, appts] = await Promise.all([
-    sql<{ id: string; encounter_at: Date; plan: string; diagnoses: { description: string; code: string; type: 'Primary' }[]; diagnosis_notes: string | null }[]>`select id, encounter_at, plan, diagnoses, diagnosis_notes from encounters where patient_id=${id} and plan is not null order by encounter_at desc limit 20`,
+    sql<{ id: string; encounter_at: Date; plan: string; diagnoses: { description: string; code: string; type: 'Primary' }[]; diagnosis_notes: string | null; diagnosis_sensitive: boolean }[]>`select id, encounter_at, plan, diagnoses, diagnosis_notes, diagnosis_sensitive from encounters where patient_id=${id} and plan is not null order by encounter_at desc limit 20`,
     sql<Treatment[]>`select * from treatments where patient_id=${id} order by (status='active') desc, created_at desc`,
     sql<Appointment[]>`select * from appointments where patient_id=${id} order by scheduled_at desc`,
   ])

@@ -24,15 +24,21 @@ export async function saveEncounter(id: string, data: EncounterPayload, close: b
   if (!enc) return { error: 'Encounter not found' }
   const pid = enc.patient_id as string
   const v = Object.fromEntries(VITALS.map((k) => [k, num(data.vitals?.[k])]))
+  const dxList = (data.diagnosis_list ?? []).map((x) => x.trim()).filter(Boolean)
+  if (close && dxList.length === 0) return { error: 'Please enter a diagnosis before completing the encounter' }
+  const charges = (data.charges ?? [])
+    .map((c) => ({ item: c.item.trim(), qty: Number(c.qty) || 1, price: Math.round((Number(c.price) || 0) * 100) / 100 }))
+    .filter((c) => c.item)
   const at = data.encounter_at ? `${data.encounter_at}:00${TZ_OFFSET}` : new Date().toISOString()
 
   await sql.begin(async (tx) => {
     await tx`update encounters set
       encounter_at=${at}, visit_type=${data.visit_type || 'Consultation'},
-      chief_complaint=${t(data.chief_complaint)}, history=${t(data.history)}, examination=${t(data.examination)}, notes=${t(data.notes)},
+      chief_complaint=${t((data.history ?? '').split('\n').map((l) => l.trim()).find(Boolean)?.slice(0, 200))}, history=${t(data.history)}, examination=${t(data.examination)}, notes=${t(data.notes)},
       bp_systolic=${v.bp_systolic}, bp_diastolic=${v.bp_diastolic}, pulse=${v.pulse}, resp_rate=${v.resp_rate},
       temperature=${v.temperature}, spo2=${v.spo2}, weight=${v.weight}, height=${v.height}, glucose=${v.glucose}, pain_score=${v.pain_score},
-      investigation_notes=${t(data.investigation_notes)}, diagnosis_notes=${t(data.diagnosis_notes)},
+      investigation_notes=${t(data.investigation_notes)}, imaging_notes=${t(data.imaging_notes)}, diagnosis_notes=${t(dxList.join('\n'))},
+      diagnosis_sensitive=${!!data.diagnosis_sensitive}, diagnosis_notifiable=${!!data.diagnosis_notifiable}, charges=${tx.json(charges)},
       investigations='[]'::jsonb, diagnoses='[]'::jsonb,
       plan=${t(data.plan)}, status=${close ? 'closed' : 'open'}, updated_at=now()
       where id=${id}`
