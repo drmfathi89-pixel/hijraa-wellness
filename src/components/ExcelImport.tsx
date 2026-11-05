@@ -3,27 +3,10 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileSpreadsheet, Upload, Download, CheckCircle2 } from 'lucide-react'
 import { rowsToRecords, type ImportRow } from '@/lib/excel'
+import { readSpreadsheet } from '@/lib/spreadsheet'
 import { importPastRecords, type ImportResult } from '@/app/actions/records'
 
 const LABELS: Record<string, string> = { ic: 'IC', name: 'Name', gender: 'Gender', dob: 'DOB', phone: 'Phone', address: 'Address', visit_date: 'Visit date', facility: 'Facility', doctor: 'Doctor', complaint: 'Complaint', diagnosis: 'Diagnosis', treatment: 'Treatment', notes: 'Notes' }
-
-function parseCSV(text: string): string[][] {
-  const out: string[][] = []
-  let row: string[] = [], cell = '', q = false
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]
-    if (q) {
-      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++ }
-      else if (c === '"') q = false
-      else cell += c
-    } else if (c === '"') q = true
-    else if (c === ',') { row.push(cell); cell = '' }
-    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); out.push(row); row = []; cell = '' }
-    else cell += c
-  }
-  if (cell || row.length) { row.push(cell); out.push(row) }
-  return out
-}
 
 export default function ExcelImport({ patientId }: { patientId?: string }) {
   const router = useRouter()
@@ -40,12 +23,7 @@ export default function ExcelImport({ patientId }: { patientId?: string }) {
     if (!f) return
     setFileName(f.name)
     try {
-      let sheet: unknown[][]
-      if (/\.csv$/i.test(f.name)) sheet = parseCSV(await f.text())
-      else if (/\.xlsx$/i.test(f.name)) {
-        const { readSheet } = await import('read-excel-file/browser')
-        sheet = (await readSheet(f)) as unknown[][]
-      } else throw new Error('Please choose an .xlsx or .csv file (in Excel: File > Save As > Excel Workbook .xlsx)')
+      const sheet = await readSpreadsheet(f)
       const { rows, mapped } = rowsToRecords(sheet)
       if (rows.length === 0) throw new Error('No recognisable columns found. Use the template headers (e.g. "IC No", "Visit Date", "Diagnosis").')
       if (!patientId && !mapped.includes('ic')) throw new Error('An "IC No" column is required to match rows to patients.')

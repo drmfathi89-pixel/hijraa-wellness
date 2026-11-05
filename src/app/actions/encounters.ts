@@ -3,10 +3,9 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
 import { requireUser } from '@/lib/auth'
-import { num, TZ_OFFSET } from '@/lib/utils'
+import { TZ_OFFSET } from '@/lib/utils'
 import type { EncounterPayload } from '@/lib/types'
 
-const VITALS = ['bp_systolic', 'bp_diastolic', 'pulse', 'resp_rate', 'temperature', 'spo2', 'weight', 'height', 'glucose', 'pain_score'] as const
 const t = (s?: string | null) => (s && s.trim() ? s.trim() : null)
 
 export async function startEncounter(patientId: string) {
@@ -23,7 +22,6 @@ export async function saveEncounter(id: string, data: EncounterPayload, close: b
   const [enc] = await sql`select patient_id from encounters where id=${id}`
   if (!enc) return { error: 'Encounter not found' }
   const pid = enc.patient_id as string
-  const v = Object.fromEntries(VITALS.map((k) => [k, num(data.vitals?.[k])]))
   const dxList = (data.diagnosis_list ?? []).map((x) => x.trim()).filter(Boolean)
   if (close && dxList.length === 0) return { error: 'Please enter a diagnosis before completing the encounter' }
   const charges = (data.charges ?? [])
@@ -35,8 +33,6 @@ export async function saveEncounter(id: string, data: EncounterPayload, close: b
     await tx`update encounters set
       encounter_at=${at}, visit_type=${data.visit_type || 'Consultation'},
       chief_complaint=${t((data.history ?? '').split('\n').map((l) => l.trim()).find(Boolean)?.slice(0, 200))}, history=${t(data.history)}, examination=${t(data.examination)}, notes=${t(data.notes)},
-      bp_systolic=${v.bp_systolic}, bp_diastolic=${v.bp_diastolic}, pulse=${v.pulse}, resp_rate=${v.resp_rate},
-      temperature=${v.temperature}, spo2=${v.spo2}, weight=${v.weight}, height=${v.height}, glucose=${v.glucose}, pain_score=${v.pain_score},
       investigation_notes=${t(data.investigation_notes)}, imaging_notes=${t(data.imaging_notes)}, diagnosis_notes=${t(dxList.join('\n'))},
       diagnosis_sensitive=${!!data.diagnosis_sensitive}, diagnosis_notifiable=${!!data.diagnosis_notifiable}, charges=${tx.json(charges)},
       investigations='[]'::jsonb, diagnoses='[]'::jsonb,

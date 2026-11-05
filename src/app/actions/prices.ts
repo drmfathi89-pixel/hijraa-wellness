@@ -42,3 +42,28 @@ export async function togglePrice(id: string) {
   await sql`update charge_items set active = not active where id=${id}`
   revalidatePath('/settings')
 }
+
+export type PriceImportResult = { added: number; updated: number; skipped: { row: number; reason: string }[] }
+
+/** Upsert price list rows from Excel: same type + name updates the price, otherwise adds. */
+export async function importPrices(rows: { kind: string; name: string; price: string }[]): Promise<PriceImportResult> {
+  await requireAdmin()
+  if (!Array.isArray(rows) || rows.length > 2000) throw new Error('Too many rows (max 2000 per import)')
+  const res: PriceImportResult = { added: 0, updated: 0, skipped: [] }
+  await sql.begin(async (tx) => {
+    for (let i = 0; i < rows.length; i++) {
+      const name = String(rows[i].name ?? '').trim()
+      const raw = String(rows[i].price ?? '').replace(/rm/i, '').replace(/,/g, '').trim()
+      const price = Number(raw)
+      const kind = CHARGE_KINDS.find((k) => k.toLowerCase() === String(rows[i].kind ?? '').trim().toLowerCase()) ?? 'Other'
+      if (!name) { res.skipped.push({ row: i + 2, reason: 'Missing name' }); continue }
+      if (raw === '' || !Number.isFinite(price) || price < 0) { res.skipped.push({ row: i + 2, reason: `Invalid price for ${name}` }); continue }
+      const p = Math.round(price * 100) / 100
+      const [hit] = await tx`update charge_items set price=${p}, active=true where lower(kind)=lower(${kind}) and lower(name)=lower(${name}) returning id`
+      if (hit) res.updated++
+      else { await tx`insert into charge_items (kind, name, price) values (${kind}, ${name}, ${p})`; res.added++ }
+    }
+  })
+  revalidatePath('/settings')
+  return res
+}

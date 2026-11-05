@@ -53,7 +53,6 @@ export default function EncounterSummary({ e, treatments, followup }: { e: Encou
         <Block title="On examination"><Text v={e.examination} /></Block>
         {e.notes && <Block title="Notes"><Text v={e.notes} /></Block>}
       </div>
-      <Block title="Vital signs"><VitalsGrid e={e} /></Block>
       <div className="grid gap-5 sm:grid-cols-2">
         <Block title="Laboratory"><Text v={investigationText(e) || null} /></Block>
         <Block title="Imaging findings"><Text v={e.imaging_notes} /></Block>

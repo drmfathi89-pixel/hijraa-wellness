@@ -6,7 +6,6 @@ import { requireUser } from '@/lib/auth'
 import { calcAge, fmtDate, fmtDateTime } from '@/lib/utils'
 import { type Encounter, diagnosisLine } from '@/lib/types'
 import { Info, StatusBadge } from '@/components/ui'
-import { VitalsGrid } from '@/components/EncounterSummary'
 import ConfirmButton from '@/components/ConfirmButton'
 import { deletePatient } from '@/app/actions/patients'
 
@@ -15,8 +14,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
   const me = await requireUser()
   const p = await getPatient(id)
   if (!p) return null
-  const [[lastVitals], recent, active, upcoming, [counts]] = await Promise.all([
-    sql<Encounter[]>`select * from encounters where patient_id=${id} and (bp_systolic is not null or pulse is not null or temperature is not null or weight is not null or spo2 is not null) order by encounter_at desc limit 1`,
+  const [recent, active, upcoming, [counts]] = await Promise.all([
     sql<Encounter[]>`select * from encounters where patient_id=${id} order by encounter_at desc limit 3`,
     sql<Treatment[]>`select * from treatments where patient_id=${id} and status='active' order by created_at desc limit 10`,
     sql<Appointment[]>`select * from appointments where patient_id=${id} and status='scheduled' and scheduled_at >= now() - interval '1 day' order by scheduled_at limit 3`,
@@ -45,10 +43,6 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
           </div>
         </section>
 
-        <section className="card card-pad">
-          <h2 className="h-section mb-3">Latest vital signs {lastVitals && <span className="text-xs font-medium text-slate-400">· {fmtDateTime(lastVitals.encounter_at)}</span>}</h2>
-          {lastVitals ? <VitalsGrid e={lastVitals} /> : <p className="text-sm text-slate-400">No vital signs recorded yet.</p>}
-        </section>
 
         <section className="card card-pad">
           <div className="mb-3 flex items-center justify-between">

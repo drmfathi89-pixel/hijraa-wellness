@@ -1,10 +1,9 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Save, CheckCircle2, Activity, FlaskConical, ClipboardList, Pill, CalendarPlus, NotebookPen, Stethoscope, Receipt, History } from 'lucide-react'
+import { Plus, Trash2, Save, CheckCircle2, FlaskConical, ClipboardList, Pill, CalendarPlus, NotebookPen, Stethoscope, Receipt, History } from 'lucide-react'
 import { saveEncounter } from '@/app/actions/encounters'
 import { type EncounterPayload, type TreatmentRow, type ChargeRow, type PriceItem, chargesTotal, rm } from '@/lib/types'
-import { bmi, vitalFlag, type Flag } from '@/lib/utils'
 
 const VISIT_TYPES = ['Consultation', 'Follow-up', 'Walk-in', 'Emergency', 'Telemedicine', 'Procedure', 'Health screening']
 const KINDS = ['Medication', 'Procedure', 'Therapy', 'Injection', 'Dressing', 'Referral', 'Other']
@@ -25,11 +24,6 @@ function Section({ icon: Icon, title, children, right }: { icon: React.ElementTy
   )
 }
 
-function FlagTag({ f }: { f: Flag }) {
-  if (!f) return null
-  return <span className={`ml-1 rounded px-1 text-[10px] font-bold ${f === 'high' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{f === 'high' ? 'H' : 'L'}</span>
-}
-
 export type PrevDx = { date: string; text: string; source: string }
 
 export default function EncounterEditor({ id, patientId, initial, previousDx = [], priceList = [] }: { id: string; patientId: string; initial: EncounterPayload; previousDx?: PrevDx[]; priceList?: PriceItem[] }) {
@@ -40,9 +34,6 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
   const [showPrev, setShowPrev] = useState(false)
 
   const set = <K extends keyof EncounterPayload>(k: K, v: EncounterPayload[K]) => setD((s) => ({ ...s, [k]: v }))
-  const setV = (k: keyof EncounterPayload['vitals'], v: string) => setD((s) => ({ ...s, vitals: { ...s.vitals, [k]: v } }))
-  const n = (k: keyof EncounterPayload['vitals']) => (d.vitals[k] === '' ? null : Number(d.vitals[k]))
-
   function updRow<T extends TreatmentRow>(key: 'treatments', i: number, patch: Partial<T>) {
     setD((s) => ({ ...s, [key]: s[key].map((r, j) => (j === i ? { ...r, ...patch } : r)) }))
   }
@@ -67,18 +58,6 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
     })
   }
 
-  const bmiVal = bmi(n('weight'), n('height'))
-  const vit: { k: keyof EncounterPayload['vitals']; label: string; unit: string; step?: string; flag?: Flag }[] = [
-    { k: 'pulse', label: 'Pulse', unit: 'bpm', flag: vitalFlag('pulse', n('pulse')) },
-    { k: 'resp_rate', label: 'Resp. rate', unit: '/min', flag: vitalFlag('resp_rate', n('resp_rate')) },
-    { k: 'temperature', label: 'Temp', unit: '°C', step: '0.1', flag: vitalFlag('temperature', n('temperature')) },
-    { k: 'spo2', label: 'SpO₂', unit: '%', flag: vitalFlag('spo2', n('spo2')) },
-    { k: 'weight', label: 'Weight', unit: 'kg', step: '0.1' },
-    { k: 'height', label: 'Height', unit: 'cm', step: '0.1' },
-    { k: 'glucose', label: 'Glucose', unit: 'mmol/L', step: '0.1', flag: vitalFlag('glucose', n('glucose')) },
-    { k: 'pain_score', label: 'Pain score', unit: '/10', flag: vitalFlag('pain_score', n('pain_score')) },
-  ]
-
   return (
     <div className="space-y-4 pb-24">
       <div className="card card-pad grid gap-3 sm:grid-cols-2">
@@ -93,29 +72,6 @@ export default function EncounterEditor({ id, patientId, initial, previousDx = [
           </select>
         </div>
       </div>
-
-      <Section icon={Activity} title="Vital signs">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="col-span-2">
-            <label className="label">Blood pressure (mmHg)<FlagTag f={vitalFlag('bp', n('bp_systolic'), n('bp_diastolic'))} /></label>
-            <div className="flex items-center gap-2">
-              <input className="input" inputMode="numeric" type="number" placeholder="Sys" value={d.vitals.bp_systolic} onChange={(e) => setV('bp_systolic', e.target.value)} />
-              <span className="text-xl text-slate-400">/</span>
-              <input className="input" inputMode="numeric" type="number" placeholder="Dia" value={d.vitals.bp_diastolic} onChange={(e) => setV('bp_diastolic', e.target.value)} />
-            </div>
-          </div>
-          {vit.map((x) => (
-            <div key={x.k}>
-              <label className="label">{x.label} <span className="normal-case text-slate-400">({x.unit})</span><FlagTag f={x.flag ?? null} /></label>
-              <input className="input" type="number" inputMode="decimal" step={x.step ?? '1'} value={d.vitals[x.k]} onChange={(e) => setV(x.k, e.target.value)} />
-            </div>
-          ))}
-          <div>
-            <label className="label">BMI<FlagTag f={vitalFlag('bmi', bmiVal ? Number(bmiVal) : null)} /></label>
-            <div className="input bg-slate-50 text-slate-600">{bmiVal ?? '-'}</div>
-          </div>
-        </div>
-      </Section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">

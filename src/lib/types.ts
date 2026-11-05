@@ -11,7 +11,6 @@ export type EncounterPayload = {
   history: string
   examination: string
   notes: string
-  vitals: Record<'bp_systolic' | 'bp_diastolic' | 'pulse' | 'resp_rate' | 'temperature' | 'spo2' | 'weight' | 'height' | 'glucose' | 'pain_score', string>
   investigation_notes: string
   imaging_notes: string
   diagnosis_list: string[]

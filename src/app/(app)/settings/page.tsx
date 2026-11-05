@@ -8,6 +8,7 @@ import { CHARGE_KINDS, rm, type PriceItem } from '@/lib/types'
 import { PageHeader, Field } from '@/components/ui'
 import MiniForm from '@/components/MiniForm'
 import InstallHint from '@/components/InstallHint'
+import PriceImport from '@/components/PriceImport'
 
 export const metadata = { title: 'Settings' }
 
@@ -78,6 +79,7 @@ export default async function Settings() {
               <div>
                 <h2 className="h-section">Price list</h2>
                 <p className="text-xs text-slate-500">Consultation types, procedures, medications and other chargeable items. Doctors pick these in an encounter&apos;s Charges.</p>
+                <PriceImport />
               </div>
               <MiniForm action={addPrice} label="Add item" submit="Add">
                 <Field label="Type"><select name="kind" className="input">{CHARGE_KINDS.map((k) => <option key={k}>{k}</option>)}</select></Field>

@@ -63,10 +63,6 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
     encounter_at: toLocalInput(e.encounter_at),
     visit_type: e.visit_type,
     chief_complaint: s(e.chief_complaint), history: s(e.history), examination: s(e.examination), notes: s(e.notes),
-    vitals: {
-      bp_systolic: s(e.bp_systolic), bp_diastolic: s(e.bp_diastolic), pulse: s(e.pulse), resp_rate: s(e.resp_rate),
-      temperature: s(e.temperature), spo2: s(e.spo2), weight: s(e.weight), height: s(e.height), glucose: s(e.glucose), pain_score: s(e.pain_score),
-    },
     investigation_notes: investigationText(e), imaging_notes: s(e.imaging_notes),
     diagnosis_list: diagnosisText(e).split('\n').map((x) => x.trim()).filter(Boolean).concat(diagnosisText(e).trim() ? [] : ['']),
     diagnosis_sensitive: e.diagnosis_sensitive, diagnosis_notifiable: e.diagnosis_notifiable,
