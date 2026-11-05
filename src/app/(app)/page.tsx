@@ -7,6 +7,7 @@ import { fmtTime, fmtDateTime, TZ } from '@/lib/utils'
 import SearchBox from '@/components/SearchBox'
 import { StatusBadge } from '@/components/ui'
 import PatientRow from '@/components/PatientRow'
+import SalesPanel from '@/components/SalesPanel'
 import { diagnosisLine } from '@/lib/types'
 import { searchPatients } from '@/lib/queries'
 
@@ -44,6 +45,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           {found.length === 0 ? <p className="p-4 text-sm text-slate-500">No patient found. <Link href="/patients/new" className="font-semibold text-brand-700">Register new patient</Link></p> : found.map((p) => <PatientRow key={p.id} p={p} />)}
         </div>
       )}
+      {me.role === 'admin' && <SalesPanel />}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map(({ label, value, icon: Icon, href }) => (
           <Link key={label} href={href} className="card card-pad flex items-center gap-3 hover:border-brand-300">
