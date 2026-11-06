@@ -29,7 +29,7 @@ export async function setupAdmin(_: FormState, fd: FormData): Promise<FormState>
   if (!username) return { error: 'Username must be 3-32 letters, numbers, dots, dashes or underscores' }
   if (password.length < 8) return { error: 'Password must be at least 8 characters' }
   const hash = await bcrypt.hash(password, 10)
-  const [u] = await sql`insert into users (name, username, email, password_hash, role, roles) values (${name}, ${username}, ${email}, ${hash}, 'admin', '{admin,doctor}') returning id`
+  const [u] = await sql`insert into users (name, username, email, password_hash, role, roles) values (${name}, ${username}, ${email}, ${hash}, 'admin', '{superadmin,admin,doctor}') returning id`
   await createSession(u.id)
   redirect('/')
 }

@@ -177,3 +177,19 @@ create index if not exists wa_outbox_status_idx on wa_outbox (status, created_at
 
 -- v9: per-user colour theme (blue | red | teal | green)
 alter table users add column if not exists theme text;
+
+-- v10: superadmin role, per-superadmin delete passkey, audit log
+alter table users drop constraint if exists users_role_check; -- legacy single-role column; roles[] is the source of truth
+alter table users add column if not exists delete_passkey_hash text;
+create table if not exists audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid references users(id) on delete set null,
+  actor_name text,
+  action text not null,
+  details text,
+  created_at timestamptz not null default now()
+);
+-- the clinic's first admin becomes the first superadmin (once, when there is none)
+update users set roles = array_append(roles, 'superadmin')
+where id = (select id from users where 'admin' = any(roles) and active order by created_at limit 1)
+  and not exists (select 1 from users where 'superadmin' = any(roles));

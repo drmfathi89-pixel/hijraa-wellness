@@ -77,8 +77,8 @@ export function bmi(weight?: number | null, height?: number | null): string | nu
   return (weight / (h * h)).toFixed(1)
 }
 
-export const ROLES = ['admin', 'doctor', 'staff'] as const
-export const ROLE_LABEL: Record<string, string> = { admin: 'Admin', doctor: 'Doctor', staff: 'Staff' }
+export const ROLES = ['superadmin', 'admin', 'doctor', 'staff'] as const
+export const ROLE_LABEL: Record<string, string> = { superadmin: 'Superadmin', admin: 'Admin', doctor: 'Doctor', staff: 'Staff' }
 export const rolesText = (r: string[]) => r.map((x) => ROLE_LABEL[x] ?? x).join(' + ')
 
 /** Roles ticked in a form (checkboxes named "roles"), in a fixed order. */

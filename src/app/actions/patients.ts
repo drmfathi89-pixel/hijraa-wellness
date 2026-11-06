@@ -2,7 +2,8 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
-import { requireUser, requireAdmin } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
+import { requireUser, requireSuper, audit } from '@/lib/auth'
 import { str, formatIC } from '@/lib/utils'
 import type { FormState } from './auth'
 
@@ -48,9 +49,18 @@ export async function updatePatient(id: string, _: FormState, fd: FormData): Pro
   redirect(`/patients/${id}`)
 }
 
-export async function deletePatient(id: string) {
-  await requireAdmin()
-  await sql`delete from patients where id=${id}`
+/** Superadmin only, and only with their delete passkey. Every deletion is written to the audit log. */
+export async function deletePatient(id: string, passkey: string): Promise<{ error?: string }> {
+  const me = await requireSuper()
+  const [u] = await sql<{ delete_passkey_hash: string | null }[]>`select delete_passkey_hash from users where id = ${me.id}`
+  if (!u?.delete_passkey_hash) return { error: 'Set your delete passkey first in Settings.' }
+  if (!passkey || !(await bcrypt.compare(passkey, u.delete_passkey_hash))) {
+    await audit(me, 'patient.delete_denied', `Wrong passkey for patient ${id}`)
+    return { error: 'Wrong passkey. Patient not deleted.' }
+  }
+  const [p] = await sql<{ name: string; ic: string }[]>`delete from patients where id = ${id} returning name, ic`
+  if (!p) return { error: 'Patient not found' }
+  await audit(me, 'patient.deleted', `${p.name} (${p.ic}) and all their records`)
   revalidatePath('/patients')
   redirect('/patients')
 }

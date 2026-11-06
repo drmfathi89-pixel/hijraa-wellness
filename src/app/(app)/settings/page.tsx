@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { LogOut, MessageCircle, BarChart3, FileSpreadsheet } from 'lucide-react'
 import { sql } from '@/lib/db'
-import { requireUser, isAdmin } from '@/lib/auth'
-import { rolesText } from '@/lib/utils'
+import { requireUser, isAdmin, isSuper } from '@/lib/auth'
+import { setDeletePasskey } from '@/app/actions/users'
+import { rolesText, fmtDateTime } from '@/lib/utils'
 import RolePicker from '@/components/RolePicker'
 import { logout, changePassword } from '@/app/actions/auth'
 import { addUser, toggleUser, resetPassword, updateUser } from '@/app/actions/users'
@@ -16,11 +17,15 @@ import PriceImport from '@/components/PriceImport'
 
 export const metadata = { title: 'Settings' }
 
+const AUDIT_LABEL: Record<string, string> = { 'patient.deleted': 'deleted patient', 'patient.delete_denied': 'delete refused (wrong passkey)', 'passkey.set': 'set delete passkey', 'superadmin.added': 'made superadmin', 'superadmin.removed': 'removed superadmin' }
+
 export default async function Settings() {
   const me = await requireUser()
   const users = isAdmin(me) ? await sql<{ id: string; name: string; username: string | null; email: string | null; roles: string[]; active: boolean }[]>`select id, name, username, email, roles, active from users order by created_at` : []
   const prices = isAdmin(me) ? await sql<PriceItem[]>`select id, kind, name, price, active from charge_items order by kind, lower(name)` : []
   const kinds = [...new Set(prices.map((p) => p.kind))]
+  const hasPasskey = isSuper(me) && !!(await sql`select 1 from users where id = ${me.id} and delete_passkey_hash is not null`)[0]
+  const auditRows = isSuper(me) ? await sql<{ actor_name: string | null; action: string; details: string | null; created_at: Date }[]>`select actor_name, action, details, created_at from audit_log order by created_at desc limit 20` : []
   return (
     <>
       <PageHeader title="Settings" />
@@ -48,6 +53,17 @@ export default async function Settings() {
           <form action={logout} className="mt-4"><button className="btn-danger w-full sm:w-auto"><LogOut size={16} /> Log out</button></form>
         </section>
         <ThemePicker value={me.theme ?? 'blue'} />
+        {isSuper(me) && (
+          <section className="card card-pad">
+            <h2 className="h-section mb-1">Delete passkey</h2>
+            <p className="mb-2 text-xs text-slate-500">Needed to delete a patient. Only superadmins have one. {hasPasskey ? 'Your passkey is set.' : 'Not set yet.'}</p>
+            <MiniForm action={setDeletePasskey} label={hasPasskey ? 'Change passkey' : 'Set passkey'} submit="Save passkey">
+              <Field label="Your login password" className="sm:col-span-2"><input type="password" name="password" className="input" required autoComplete="current-password" /></Field>
+              <Field label="New passkey (min 6)"><input type="password" name="passkey" className="input" required minLength={6} autoComplete="new-password" /></Field>
+              <Field label="Repeat passkey"><input type="password" name="confirm" className="input" required minLength={6} autoComplete="new-password" /></Field>
+            </MiniForm>
+          </section>
+        )}
         <InstallHint />
         {isAdmin(me) && (
           <section className="card card-pad lg:col-span-2">
@@ -57,7 +73,7 @@ export default async function Settings() {
                 <Field label="Full name"><input name="name" className="input" required /></Field>
                 <Field label="Username"><input name="username" className="input" required autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="e.g. drsiti" /></Field>
                 <Field label="Email (optional)"><input type="email" name="email" className="input" /></Field>
-                <Field label="Roles"><RolePicker /></Field>
+                <Field label="Roles"><RolePicker canSuper={isSuper(me)} /></Field>
                 <Field label="Temporary password"><input type="text" name="password" className="input" required minLength={8} /></Field>
               </MiniForm>
             </div>
@@ -68,11 +84,12 @@ export default async function Settings() {
                     <div className="font-semibold">{u.name} {!u.active && <span className="badge bg-slate-200 text-slate-600">disabled</span>}</div>
                     <div className="text-xs text-slate-500">@{u.username ?? '-'}{u.email ? ` · ${u.email}` : ''} · <span>{rolesText(u.roles)}</span></div>
                   </div>
+                  {u.roles.includes('superadmin') && !isSuper(me) ? <span className="badge bg-slate-100 text-slate-500">Only a superadmin can change this account</span> : (<>
                   <MiniForm action={updateUser.bind(null, u.id)} label="Edit" submit="Save">
                     <Field label="Full name"><input name="name" className="input" required defaultValue={u.name} /></Field>
                     <Field label="Username"><input name="username" className="input" required defaultValue={u.username ?? ''} autoCapitalize="none" autoCorrect="off" spellCheck={false} /></Field>
                     <Field label="Email (optional)"><input type="email" name="email" className="input" defaultValue={u.email ?? ''} /></Field>
-                    <Field label="Roles"><RolePicker value={u.roles} /></Field>
+                    <Field label="Roles"><RolePicker value={u.roles} canSuper={isSuper(me)} /></Field>
                   </MiniForm>
                   {u.id !== me.id && (
                     <>
@@ -82,6 +99,7 @@ export default async function Settings() {
                       <form action={toggleUser.bind(null, u.id)}><button className="btn-secondary btn-sm">{u.active ? 'Disable' : 'Enable'}</button></form>
                     </>
                   )}
+                  </>)}
                 </li>
               ))}
             </ul>
@@ -120,6 +138,23 @@ export default async function Settings() {
                 </ul>
               </div>
             ))}
+          </section>
+        )}
+        {isSuper(me) && (
+          <section className="card card-pad lg:col-span-2">
+            <h2 className="h-section mb-2">Audit log <span className="text-xs font-normal text-slate-400">(superadmin only)</span></h2>
+            {auditRows.length === 0 ? <p className="text-sm text-slate-400">No sensitive actions yet.</p> : (
+              <ul className="divide-y divide-slate-100 text-sm">
+                {auditRows.map((a, i) => (
+                  <li key={i} className="flex flex-wrap gap-x-3 py-1.5">
+                    <span className="w-36 shrink-0 text-xs text-slate-400">{fmtDateTime(a.created_at)}</span>
+                    <span className="font-semibold">{a.actor_name ?? '-'}</span>
+                    <span className={a.action.includes('denied') ? 'text-heart' : 'text-slate-700'}>{AUDIT_LABEL[a.action] ?? a.action}</span>
+                    <span className="text-slate-500">{a.details}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </div>
