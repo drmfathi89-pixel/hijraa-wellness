@@ -10,7 +10,7 @@ export const SESSION_COOKIE = 'hw_session'
 const MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
 export type Role = 'admin' | 'doctor' | 'staff'
-export type SessionUser = { id: string; name: string; username: string; email: string | null; roles: Role[] }
+export type SessionUser = { id: string; name: string; username: string; email: string | null; roles: Role[]; theme: string | null }
 
 export const isAdmin = (u: { roles: string[] } | null | undefined) => !!u?.roles.includes('admin')
 
@@ -35,7 +35,7 @@ export const getUser = cache(async (): Promise<SessionUser | null> => {
   if (!token) return null
   try {
     const { payload } = await jwtVerify(token, await sessionKey())
-    const [u] = await sql<SessionUser[]>`select id, name, username, email, roles from users where id = ${payload.sub as string} and active`
+    const [u] = await sql<SessionUser[]>`select id, name, username, email, roles, theme from users where id = ${payload.sub as string} and active`
     return u ?? null
   } catch {
     return null

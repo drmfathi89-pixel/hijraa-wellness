@@ -49,3 +49,11 @@ export async function changePassword(_: FormState, fd: FormData): Promise<FormSt
   await sql`update users set password_hash = ${await bcrypt.hash(next, 10)} where id = ${me.id}`
   return { ok: 'Password updated' }
 }
+
+const THEME_IDS = ['blue', 'red', 'teal', 'green']
+
+export async function setTheme(theme: string) {
+  const me = await requireUser()
+  if (!THEME_IDS.includes(theme)) return
+  await sql`update users set theme = ${theme} where id = ${me.id}`
+}

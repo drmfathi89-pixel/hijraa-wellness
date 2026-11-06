@@ -4,7 +4,7 @@ import { Sidebar, BottomNav, MobileHeader } from '@/components/Nav'
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh" data-theme={user.theme ?? 'blue'}>
       <Sidebar user={user} />
       <MobileHeader />
       <div className="lg:pl-64">

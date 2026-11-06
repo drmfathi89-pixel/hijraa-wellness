@@ -11,6 +11,7 @@ import { CHARGE_KINDS, rm, type PriceItem } from '@/lib/types'
 import { PageHeader, Field } from '@/components/ui'
 import MiniForm from '@/components/MiniForm'
 import InstallHint from '@/components/InstallHint'
+import ThemePicker from '@/components/ThemePicker'
 import PriceImport from '@/components/PriceImport'
 
 export const metadata = { title: 'Settings' }
@@ -46,6 +47,7 @@ export default async function Settings() {
           </div>
           <form action={logout} className="mt-4"><button className="btn-danger w-full sm:w-auto"><LogOut size={16} /> Log out</button></form>
         </section>
+        <ThemePicker value={me.theme ?? 'blue'} />
         <InstallHint />
         {isAdmin(me) && (
           <section className="card card-pad lg:col-span-2">

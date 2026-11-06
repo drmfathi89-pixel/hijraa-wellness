@@ -174,3 +174,6 @@ create table if not exists wa_outbox (
   sent_at timestamptz
 );
 create index if not exists wa_outbox_status_idx on wa_outbox (status, created_at);
+
+-- v9: per-user colour theme (blue | red | teal | green)
+alter table users add column if not exists theme text;

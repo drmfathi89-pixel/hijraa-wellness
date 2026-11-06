@@ -48,3 +48,18 @@ body { background: #f5f6fb; color: #0f1430; }
 @utility btn-danger { @apply btn border border-heart/30 bg-white text-heart hover:bg-heart/5; }
 @utility btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
 @utility btn-sm { @apply px-3 py-1.5 text-xs; }
+
+/* Colour themes from the Hijraa logo, chosen per user in Settings.
+   Each re-points the brand scale; every bg-brand-* / text-brand-* follows. */
+[data-theme="red"] {
+  --color-brand-50: #fef2ee; --color-brand-100: #fde3da; --color-brand-200: #fbc4b2; --color-brand-300: #f79a7e;
+  --color-brand-500: #e8451b; --color-brand-600: #d82b05; --color-brand-700: #b02304; --color-brand-800: #8a1c05; --color-brand-900: #6b1606;
+}
+[data-theme="teal"] {
+  --color-brand-50: #e6fefd; --color-brand-100: #c4fbf9; --color-brand-200: #8df5f1; --color-brand-300: #3ee8e2;
+  --color-brand-500: #00a19b; --color-brand-600: #007f7a; --color-brand-700: #006662; --color-brand-800: #00504d; --color-brand-900: #003f3d;
+}
+[data-theme="green"] {
+  --color-brand-50: #f4fde8; --color-brand-100: #e6f9cc; --color-brand-200: #cdf29b; --color-brand-300: #a8eb43;
+  --color-brand-500: #5c9e16; --color-brand-600: #437d0c; --color-brand-700: #36650a; --color-brand-800: #2b500a; --color-brand-900: #213e09;
+}
